@@ -1,0 +1,54 @@
+\documentclass[12pt, letterpaper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+
+\title{Tarea 1: Computación de Alto Rendimiento (IIC3533)}
+\author{Josefina Abbott Cerda, José Ignacio Salas Coeymans y Borja Smith Vergara}
+\date{11 de septiembre de 2026}
+
+\begin{document}
+
+\maketitle
+
+\section*{(a) Generación de datos sintéticos}
+% Detalle cómo se muestrearon los coeficientes y se armó la matriz X e y.
+
+\section*{(b) Implementaciones de bootstrapping}
+% Comente sobre las versiones bs_auto.py, bs_sklearn.py y bs_numpy.py y sus mejoras.
+
+\section*{(c) Correctitud y reproducibilidad}
+% Analice la similitud de los intervalos de confianza y las condiciones para reproducir resultados.
+
+\section*{(d) Backend multiprocessing de joblib}
+% Explique la creación de procesos en el SO, la asignación de memoria y qué ocurre con los arreglos X e y.
+
+\section*{(e) Actividad del sistema y oversubscription}
+% Reporte lo observado en el monitor del sistema y con threadpool_info(). Comente sobre oversubscription y cómo corregirlo.
+
+\section*{(f) Tiempos de ejecución en función de p}
+% Inserte el gráfico o tabla comparando las tres versiones hasta p_max.
+% Ejemplo de figura:
+% \begin{figure}[h]
+%     \centering
+%     \includegraphics[width=0.7\textwidth]{results/figura_f.png}
+%     \caption{Tiempos de ejecución vs número de procesos (p).}
+% \end{figure}
+
+\section*{(g) Speedup S(p) y Eficiencia E(p)}
+% Presente los gráficos de T(p), S(p) y E(p) comparados con la curva ideal, y justifique T(1).
+
+\section*{(h) Overhead $T_o(p)$}
+% Gráfico del overhead en función de p y comentario sobre sus principales fuentes.
+
+\section*{(i) Variación de procesos y threads internos}
+% Gráfico variando (p, t) asegurando p * t <= p_max con la mejor versión de (b). Concluya cuál es la mejor combinación.
+
+\section*{(j) Comparación entre computadores}
+% Compare los resultados de los dos computadores utilizados, notando las diferencias principales y su justificación.
+
+\end{document}
