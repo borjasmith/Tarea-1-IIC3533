@@ -72,13 +72,65 @@ En primer lugar, al definir \texttt{fit\_intercept=False}, se elimina una operac
 
 Si bien empíricamente la Versión 5 registró un tiempo marginalmente inferior en esta ejecución específica (4.15s vs 4.20s), esta diferencia de $\sim$0.05 segundos es atribuible a la varianza natural del \textit{scheduling} de la CPU en el sistema operativo. A nivel de arquitectura de software, la Versión 4 es superior porque utiliza una comprensión de listas (\texttt{[est.coef\_ for est in ...]}) en lugar de un \texttt{.append()} dinámico. Esto permite que el motor en C de Python asigne el bloque de memoria necesario de una sola vez, en lugar de redimensionar la lista continuamente en cada iteración, previniendo cuellos de botella en la memoria RAM a medida que el proceso escala.
 
-% Implementamos tres versiones del algoritmo de bootstrapping para $B=48$ remuestreos, variando el nivel de abstracción:
+\subsection*{Evolución de \texttt{bs\_sklearn.py}}
 
-% \begin{itemize}
-%     \item \textbf{\texttt{bs\_auto.py}:} Utiliza \texttt{BaggingRegressor} de scikit-learn. La paralelización es manejada internamente mediante el parámetro \texttt{n\_jobs}. Su tiempo de ejecución secuencial ($p=1$) fue de aproximadamente 5.14 segundos.
-%     \item \textbf{\texttt{bs\_sklearn.py}:} Utiliza \texttt{joblib.Parallel} y \texttt{delayed} para distribuir iteraciones de \texttt{LinearRegression}. Se requirió instanciar generadores de números aleatorios independientes por proceso. Su tiempo fue ligeramente superior (5.47 segundos) debido al manejo manual de los arreglos y procesos.
-%     \item \textbf{\texttt{bs\_numpy.py}:} Prescinde totalmente de scikit-learn, resolviendo la ecuación de Mínimos Cuadrados Ordinarios algebraicamente: $\hat{\beta} = (X^{\top}X)^{-1}X^{\top}y$ mediante \texttt{np.linalg.solve}. Al omitir las validaciones internas de objetos de scikit-learn, el tiempo de ejecución se redujo drásticamente a 0.95 segundos.
-% \end{itemize}
+\textbf{1. Cambios implementados por versión}
+\begin{itemize}
+    \item \textbf{Versión 1 (Ingenua):} Utiliza el generador aleatorio global (\texttt{np.random.choice}) dentro de cada proceso trabajador. Esto provoca que procesos iniciados simultáneamente compartan la misma semilla y extraigan las mismas muestras, arruinando la independencia del bootstrapping. Además, mantiene activado el cálculo del intercepto por defecto.
+    \item \textbf{Versión 2:} Aísla la generación de números aleatorios asignando una semilla determinista única (\texttt{seed\_b}) a cada proceso mediante \texttt{np.random.default\_rng(seed\_b)}. Esto incrementa levemente el tiempo de ejecución por el costo de instanciar 48 generadores distintos, pero es matemáticamente obligatorio para garantizar la validez estadística.
+    \item \textbf{Versión 3:} Introduce \texttt{fit\_intercept=False}. Al igual que en \texttt{bs\_auto.py}, esto elimina el procesamiento redundante de la matriz, reduciendo los tiempos de ejecución notablemente. Adicionalmente, el retorno estricto de \texttt{model.coef\_} en lugar del objeto modelo completo evita cuellos de botella por serialización (\textit{pickling}) durante la comunicación entre procesos de \texttt{joblib}.
+\end{itemize}
+
+\textbf{2. Tiempos de ejecución}
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{|c|l|c|}
+    \hline
+    \textbf{Versión} & \textbf{Características Principales} & \textbf{Tiempo ($p=1$)} \\
+    \hline
+    v1 & RNG global (incorrecto), intercepto activo & 5.9958 s \\
+    v2 & RNG independiente (correcto), intercepto activo & 7.7394 s \\
+    v3 & RNG independiente, sin intercepto & 5.5406 s \\
+    \hline
+    \end{tabular}
+    \caption{Tiempos de ejecución empíricos para distintas iteraciones de \texttt{bs\_sklearn.py}.}
+\end{table}
+
+\textbf{3. Análisis de la versión óptima}
+
+La \textbf{Versión 3} representa la implementación correcta y más eficiente utilizando scikit-learn de forma explícita. El manejo independiente de las semillas elimina las condiciones de carrera paralela, mientras que la desactivación del intercepto evita cálculos innecesarios sobre la matriz $X$, devolviendo el tiempo de ejecución a niveles óptimos ($\sim$5.54s) sin comprometer la correctitud del algoritmo iterativo.
+
+\subsection*{Evolución de \texttt{bs\_numpy.py}}
+
+\textbf{1. Cambios implementados por versión}
+\begin{itemize}
+    \item \textbf{Versión 1 (Ingenua):} Traduce literalmente la fórmula de Mínimos Cuadrados Ordinarios entregada en el enunciado: $\hat{\beta} = (X^{\top}X)^{-1}X^{\top}y$[cite: 1]. Utiliza \texttt{np.linalg.inv()} para calcular explícitamente la matriz inversa antes de realizar las multiplicaciones matriciales.
+    \item \textbf{Versión 2:} Reemplaza la inversión explícita reescribiendo el problema como la resolución de un sistema de ecuaciones lineales: $(X^{\top}X)\hat{\beta} = X^{\top}y$[cite: 1]. Utiliza \texttt{np.linalg.solve()} para encontrar los coeficientes de manera directa.
+\end{itemize}
+
+\textbf{2. Tiempos de ejecución}
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{|c|l|c|}
+    \hline
+    \textbf{Versión} & \textbf{Características Principales} & \textbf{Tiempo ($p=1$)} \\
+    \hline
+    v1 & Cálculo explícito con \texttt{np.linalg.inv()} & 1.0937 s \\
+    v2 & Resolución de sistema con \texttt{np.linalg.solve()} & 1.0204 s \\
+    \hline
+    \end{tabular}
+    \caption{Tiempos de ejecución empíricos para distintas iteraciones de \texttt{bs\_numpy.py}.}
+\end{table}
+
+\textbf{3. Análisis de la versión óptima}
+
+La \textbf{Versión 2} es la implementación óptima y definitiva para esta sección. 
+
+Aunque la diferencia de tiempo empírica en una sola ejecución con $p=1$ parece marginal ($\sim$0.07 segundos), el cambio posee un peso teórico y arquitectónico fundamental. Calcular explícitamente la inversa de una matriz mediante \texttt{np.linalg.inv()} es computacionalmente ineficiente y altamente susceptible a errores de redondeo de punto flotante a medida que la dimensionalidad aumenta. 
+
+Al utilizar \texttt{np.linalg.solve()}, NumPy delega la operación a subrutinas optimizadas de álgebra lineal (LAPACK), las cuales resuelven el sistema de ecuaciones $(X^{\top}X)\hat{\beta} = X^{\top}y$[cite: 1] mediante métodos de factorización directa (como descomposición LU o Cholesky) sin llegar a instanciar la matriz inversa en la memoria. Esto garantiza una mayor estabilidad numérica y previene cuellos de botella algorítmicos, preparándonos correctamente para los experimentos de escalabilidad con $p_{max}$ procesos[cite: 1].
 
 Para correr las implementaciones, se pueden ejecutar los siguientes comandos en la terminal:
 \begin{verbatim}
@@ -88,12 +140,36 @@ python src/bs_numpy.py
 \end{verbatim}
 
 \section*{(c) Correctitud y reproducibilidad}
-% Analice la similitud de los intervalos de confianza y las condiciones para reproducir resultados.
-% Correr:
-% python src/correctness.py
+
+\textbf{Consistencia con $\beta^*$:}
+Las tres versiones producen intervalos de confianza empíricamente consistentes con los coeficientes verdaderos $\beta^*$. La implementación automatizada (\texttt{bs\_auto.py}) logra una cobertura del 93.69\%, mientras que las implementaciones manuales (\texttt{bs\_sklearn.py} y \texttt{bs\_numpy.py}) alcanzan un 91.69\%. Aunque la cobertura se encuentra ligeramente por debajo del 95\% teórico, esto es un comportamiento esperado debido al reducido número de remuestreos exigido ($B=48$)[cite: 1]. Pese a ello, las tres iteraciones capturan exitosamente la inmensa mayoría de los coeficientes, confirmando la validez estructural del algoritmo.
+
+\textbf{Equivalencia entre versiones:}
+\begin{itemize}
+    \item \texttt{bs\_sklearn.py} y \texttt{bs\_numpy.py} son estrictamente equivalentes. Al ejecutar la validación, se comprobó que ambas implementaciones son matemáticamente idénticas. Dado que utilizan el mismo arreglo de semillas (\texttt{seed\_b}) para el generador \texttt{np.random.default\_rng}, extraen exactamente las mismas muestras en cada iteración $b$. En consecuencia, sus estimaciones convergen sin discrepancias.
+    \item \texttt{bs\_auto.py} es equivalente a nivel estadístico (logrando una cobertura similar del $\sim$93\%), pero sus intervalos exactos difieren. Esto ocurre porque \texttt{BaggingRegressor} administra su propio estado aleatorio interno para el remuestreo de manera opaca, generando secuencias de índices distintas a las provistas en las versiones manuales.
+\end{itemize}
+
+\textbf{Condiciones de reproducibilidad:}
+Para que los resultados sean estrictamente reproducibles entre distintas ejecuciones, se deben cumplir tres condiciones fundamentales:
+\begin{enumerate}
+    \item Fijar la semilla del generador inicial utilizado para la creación sintética de la matriz $X$ y el vector $y$[cite: 1].
+    \item Instanciar generadores aleatorios locales y aislados (\texttt{default\_rng}) dentro de cada proceso trabajador de \texttt{joblib} para anular cualquier condición de carrera en la memoria compartida.
+    \item Garantizar una asignación determinista de semillas. El mapeo entre la iteración bootstrap $b$ y su semilla debe ser invariante (por ejemplo, mediante una lista secuencial estática), asegurando que el remuestreo sea independiente del número de procesos $p$ utilizados o del orden de asignación del sistema operativo.
+\end{enumerate}
+
+Para verificar la correctitud y reproducibilidad de las implementaciones, se puede ejecutar el siguiente comando en la terminal:
+\begin{verbatim}
+python src/correctness.py
+\end{verbatim}
 
 \section*{(d) Backend multiprocessing de joblib}
-% Explique la creación de procesos en el SO, la asignación de memoria y qué ocurre con los arreglos X e y.
+
+\textbf{Creación de procesos y asignación de memoria:}
+En entornos Linux, como el habilitado a través de WSL, el backend de \texttt{joblib} utiliza llamadas al sistema operativo (típicamente variantes de \texttt{fork} mediante su gestor interno \texttt{loky}) para generar procesos hijos a partir del script principal. Al crear estos nuevos procesos, el sistema operativo no realiza una copia inmediata y exhaustiva de la memoria RAM del proceso padre. En su lugar, emplea una técnica de gestión de memoria denominada \textit{Copy-on-Write} (CoW). Bajo este esquema, los procesos hijos recién creados reciben direcciones virtuales que apuntan a las mismas páginas de memoria física del proceso original. El sistema operativo solo asigna memoria nueva y duplica la información si un proceso hijo intenta sobreescribir o modificar los datos.
+
+\textbf{Comportamiento de los arreglos $X$ e $y$:}
+Al lanzar $p$ procesos, los arreglos sintéticos $X$ e $y$ no se replican $p$ veces en la RAM del computador[cite: 1]. Dado que la lógica del bootstrapping implementada únicamente requiere leer secciones específicas de los arreglos mediante indexación (\texttt{X[indices]}), las estructuras originales permanecen intactas y tratadas como datos de solo lectura. Gracias al mecanismo \textit{Copy-on-Write}, los $p$ trabajadores paralelos acceden simultáneamente a la única copia física de $X$ e $y$ que reside en la memoria del proceso principal. Esto previene un desbordamiento masivo de la memoria RAM (impidiendo que $X \in \mathbb{R}^{10000 \times 301}$ se copie innecesariamente[cite: 1]) y minimiza el \textit{overhead} temporal al instanciar las tareas en paralelo.
 
 \section*{(e) Actividad del sistema y oversubscription}
 % Reporte lo observado en el monitor del sistema y con threadpool_info(). Comente sobre oversubscription y cómo corregirlo.
@@ -120,6 +196,14 @@ python src/bs_numpy.py
 % Compare los resultados de los dos computadores utilizados, notando las diferencias principales y su justificación.
 
 
-\section*{Declaración uso de IA}
+\section*{Declaración de uso de Inteligencia Artificial}
+En el desarrollo de esta tarea, se utilizaron modelos de lenguaje de Inteligencia Artificial como asistente de programación, estructuración y estudio (Gemini, ..., ...). Específicamente, la herramienta fue empleada para:
+
+\begin{itemize}
+    \item \textbf{Optimización algorítmica:} Guiar la evolución iterativa del código (de implementaciones ingenuas a óptimas), sugiriendo mejoras como la vectorización de ciclos, el manejo determinista de semillas en \texttt{joblib} y la sustitución de inversiones matriciales por resolución de sistemas lineales (\texttt{np.linalg.solve}).
+    \item \textbf{Edición y formato:} Asistir en la estructuración de este documento en \LaTeX.
+\end{itemize}
+
+Todo el código, los tiempos de ejecución y las explicaciones teóricas generadas con el apoyo de la herramienta fueron revisados, ejecutados y validados empíricamente por los integrantes del grupo para asegurar su total correctitud y cumplimiento con las exigencias del enunciado.
 
 \end{document}
