@@ -72,7 +72,7 @@ def bootstrap_auto_v3(X, y, B, p):
     exec_time = time.time() - start_time
     return lower_bound, upper_bound, exec_time
 
-def bootstrap_auto_v4(X, y, B, p):
+def bootstrap_auto_v4(X, y, B, p, random_state=1234):
     base_model = LinearRegression(fit_intercept=False) 
     
     bagging_model = BaggingRegressor(
@@ -80,6 +80,7 @@ def bootstrap_auto_v4(X, y, B, p):
         n_estimators=B,
         n_jobs=p,
         bootstrap=True,
+        random_state=random_state,
     )
     
     start_time = time.time()

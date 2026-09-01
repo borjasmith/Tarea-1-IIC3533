@@ -9,3 +9,4 @@ Thumbs.db
 *.fdb_latexmk
 *.synctex.gz
 *.toc
+.venv/

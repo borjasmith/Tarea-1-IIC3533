@@ -172,19 +172,172 @@ En entornos Linux, como el habilitado a través de WSL, el backend de \texttt{jo
 Al lanzar $p$ procesos, los arreglos sintéticos $X$ e $y$ no se replican $p$ veces en la RAM del computador[cite: 1]. Dado que la lógica del bootstrapping implementada únicamente requiere leer secciones específicas de los arreglos mediante indexación (\texttt{X[indices]}), las estructuras originales permanecen intactas y tratadas como datos de solo lectura. Gracias al mecanismo \textit{Copy-on-Write}, los $p$ trabajadores paralelos acceden simultáneamente a la única copia física de $X$ e $y$ que reside en la memoria del proceso principal. Esto previene un desbordamiento masivo de la memoria RAM (impidiendo que $X \in \mathbb{R}^{10000 \times 301}$ se copie innecesariamente[cite: 1]) y minimiza el \textit{overhead} temporal al instanciar las tareas en paralelo.
 
 \section*{(e) Actividad del sistema y oversubscription}
-% Reporte lo observado en el monitor del sistema y con threadpool_info(). Comente sobre oversubscription y cómo corregirlo.
+
+Los experimentos de este inciso se realizaron en un MacBook Air con macOS
+(arquitectura ARM64) y 8 cores lógicos. Se utilizó NumPy 2.0.2, joblib 1.5.3 y
+threadpoolctl 3.6.0. La configuración de NumPy indica que las operaciones BLAS y
+LAPACK están enlazadas con el framework Apple Accelerate.
+
+Ejecutamos \texttt{bs\_numpy.py} con $p\in\{1,2,4,8\}$. Al observar una
+ejecución prolongada con $p=8$, el sistema mostró el proceso principal, dos
+procesos auxiliares de \texttt{loky} y ocho procesos trabajadores. Los ocho
+trabajadores registraron aproximadamente entre 53\% y 66\% de CPU cada uno en
+la muestra observada. Esto confirma que los remuestreos fueron distribuidos
+entre procesos distintos, aunque no se alcanzó una utilización sostenida de
+800\% de CPU.
+
+Para inspeccionar los threads internos, ejecutamos
+\texttt{threadpool\_info()} tanto en el proceso principal como dentro de cada
+trabajador, después de realizar operaciones de álgebra lineal. En todos los
+casos el resultado fue una lista vacía. Esto no significa que Accelerate nunca
+utilice threads internos, sino que en esta configuración
+\texttt{threadpoolctl} no detecta ni reporta el pool de Apple Accelerate. Por
+esta razón no es posible inferir un valor de $t$ a partir de esta función, a
+diferencia de instalaciones de NumPy basadas en OpenBLAS o MKL.
+
+Como diagnóstico adicional, repetimos tres veces cada configuración. Las
+medianas preliminares sin limitar threads fueron 0.555, 0.555, 0.455 y 0.516
+segundos para $p=1,2,4,8$, respectivamente. El estancamiento entre $p=4$ y
+$p=8$ muestra que agregar procesos deja de producir beneficios, pero no se
+observó una degradación pronunciada que permita afirmar que existe
+\textit{oversubscription}. También probamos
+\texttt{threadpool\_limits(limits=1)} y la variable
+\texttt{VECLIB\_MAXIMUM\_THREADS=1}; ninguna produjo una mejora consistente,
+lo que concuerda con la falta de evidencia de oversubscription en este equipo.
+
+En general, sí existiría oversubscription si cada uno de los $p$ procesos
+lanzara $t$ threads BLAS y se cumpliera $p\,t>p_{\max}$. En una instalación
+compatible con \texttt{threadpoolctl} puede corregirse envolviendo el cálculo
+con \texttt{threadpool\_limits(limits=1)} o configurando
+\texttt{inner\_max\_num\_threads=1} en el backend \texttt{loky}. Para Apple
+Accelerate puede fijarse \texttt{VECLIB\_MAXIMUM\_THREADS=1} antes de iniciar
+Python. El script \texttt{src/experiment\_e.py} deja automatizadas la consulta
+de los pools, la identificación de los procesos trabajadores y la medición.
 
 \section*{(f) Tiempos de ejecución en función de p}
-% Inserte el gráfico o tabla comparando las tres versiones hasta p_max.
-% Ejemplo de figura:
-% \begin{figure}[h]
-%     \centering
-%     \includegraphics[width=0.7\textwidth]{results/figura_f.png}
-%     \caption{Tiempos de ejecución vs número de procesos (p).}
-% \end{figure}
+
+El primer computador posee $p_{\max}=8$ cores lógicos. Comparamos las
+versiones finales \texttt{bootstrap\_auto\_v4},
+\texttt{bootstrap\_sklearn\_v3} y \texttt{bootstrap\_numpy\_v2} usando los
+mismos datos ($N=10000$, $k=300$), $B=48$ y las mismas semillas. Para cada
+implementación y cada $p\in\{1,\ldots,8\}$ se realizaron tres ejecuciones. El
+orden de las 72 configuraciones fue aleatorizado para reducir el sesgo causado
+por calentamiento del equipo o por el orden de ejecución. Reportamos la mediana,
+por ser menos sensible que la media a interferencias transitorias del sistema.
+
+\begin{table}[h]
+    \centering
+    \small
+    \begin{tabular}{|c|r|r|r|}
+    \hline
+    $p$ & \textbf{BaggingRegressor} & \textbf{sklearn + joblib} & \textbf{NumPy + joblib} \\
+    \hline
+    1 & 8.741 & 9.119 & 0.520 \\
+    2 & 5.711 & 5.431 & 0.714 \\
+    3 & 3.838 & 3.584 & 0.700 \\
+    4 & 3.673 & 3.927 & 0.732 \\
+    5 & 2.825 & 2.978 & 0.624 \\
+    6 & 3.002 & 2.757 & 0.511 \\
+    7 & 2.422 & 2.880 & 0.523 \\
+    8 & 2.937 & 3.443 & 0.666 \\
+    \hline
+    \end{tabular}
+    \caption{Mediana de los tiempos de ejecución $T(p)$, en segundos, para
+    tres repeticiones en el primer computador.}
+    \label{tab:tiempos-f}
+\end{table}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.82\textwidth]{../results/computer_1/tiempos_f.png}
+    \caption{Tiempo mediano de ejecución en función de $p$. Las barras se
+    extienden entre el mínimo y el máximo de las tres repeticiones.}
+    \label{fig:tiempos-f}
+\end{figure}
+
+La implementación basada solamente en NumPy fue la más rápida para todos los
+valores de $p$: con un proceso tardó aproximadamente 0.520 s, frente a 8.741 s
+de \texttt{BaggingRegressor} y 9.119 s de la versión manual con scikit-learn.
+La diferencia se debe principalmente a que \texttt{LinearRegression} realiza
+más trabajo general para ajustar cada modelo, mientras que la versión NumPy
+resuelve directamente las ecuaciones normales.
+
+Las dos implementaciones basadas en scikit-learn mejoraron al aumentar $p$
+hasta aproximadamente seis o siete procesos. El mejor tiempo observado fue
+2.422 s con $p=7$ para \texttt{BaggingRegressor} y 2.757 s con $p=6$ para
+\texttt{sklearn + joblib}. En cambio, NumPy no escaló al aumentar los procesos:
+sus tiempos fluctuaron entre 0.511 s y 0.732 s. En esta versión cada tarea es
+tan breve que el costo de crear o coordinar procesos, despachar las 48 tareas y
+administrar sus resultados es comparable al trabajo útil. Finalmente, las tres
+curvas empeoraron en $p=8$, lo que indica que utilizar todos los cores lógicos
+no necesariamente minimiza el tiempo debido al overhead y a la competencia por
+recursos compartidos.
 
 \section*{(g) Speedup S(p) y Eficiencia E(p)}
-% Presente los gráficos de T(p), S(p) y E(p) comparados con la curva ideal, y justifique T(1).
+
+A partir de las medianas de la Tabla~\ref{tab:tiempos-f}, calculamos para cada
+implementación:
+\[
+    S(p)=\frac{T(1)}{T(p)}, \qquad E(p)=\frac{S(p)}{p}.
+\]
+Elegimos como $T(1)$ la mediana de las tres ejecuciones de la misma
+implementación con $p=1$: 8.741 s para \texttt{BaggingRegressor}, 9.119 s para
+\texttt{sklearn + joblib} y 0.520 s para \texttt{NumPy + joblib}. Esta elección
+mantiene constantes el algoritmo, los datos, las semillas y la instrumentación,
+por lo que mide escalabilidad fuerte sin mezclar el resultado con una
+implementación secuencial diferente. Además, usar la mediana evita que una
+ejecución excepcionalmente lenta o rápida determine toda la curva.
+
+\begin{table}[h]
+    \centering
+    \scriptsize
+    \begin{tabular}{|c|cc|cc|cc|}
+    \hline
+     & \multicolumn{2}{c|}{\textbf{BaggingRegressor}}
+     & \multicolumn{2}{c|}{\textbf{sklearn + joblib}}
+     & \multicolumn{2}{c|}{\textbf{NumPy + joblib}} \\
+    $p$ & $S(p)$ & $E(p)$ & $S(p)$ & $E(p)$ & $S(p)$ & $E(p)$ \\
+    \hline
+    1 & 1.000 & 1.000 & 1.000 & 1.000 & 1.000 & 1.000 \\
+    2 & 1.530 & 0.765 & 1.679 & 0.840 & 0.729 & 0.365 \\
+    3 & 2.278 & 0.759 & 2.544 & 0.848 & 0.744 & 0.248 \\
+    4 & 2.380 & 0.595 & 2.322 & 0.581 & 0.711 & 0.178 \\
+    5 & 3.094 & 0.619 & 3.063 & 0.613 & 0.834 & 0.167 \\
+    6 & 2.912 & 0.485 & 3.307 & 0.551 & 1.019 & 0.170 \\
+    7 & 3.609 & 0.516 & 3.166 & 0.452 & 0.995 & 0.142 \\
+    8 & 2.976 & 0.372 & 2.648 & 0.331 & 0.782 & 0.098 \\
+    \hline
+    \end{tabular}
+    \caption{Speedup y eficiencia calculados a partir de los tiempos medianos.}
+    \label{tab:metricas-g}
+\end{table}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{../results/computer_1/metricas_g.png}
+    \caption{Tiempo, speedup y eficiencia observados. En el panel de tiempo,
+    las líneas discontinuas corresponden a $T(1)/p$ para cada implementación;
+    en los otros paneles, la curva ideal es $S(p)=p$ y $E(p)=1$.}
+    \label{fig:metricas-g}
+\end{figure}
+
+Ninguna implementación alcanzó la curva ideal. \texttt{BaggingRegressor}
+obtuvo su mayor speedup en $p=7$, con $S(7)=3.609$ y $E(7)=0.516$. La versión
+manual con scikit-learn alcanzó su máximo en $p=6$, con $S(6)=3.307$ y
+$E(6)=0.551$. En ambas versiones el trabajo de ajustar 48 regresiones es
+suficiente para amortizar parte del costo de los procesos, pero la eficiencia
+disminuye al crecer $p$ debido a creación y coordinación de procesos,
+distribución de tareas, movimiento de resultados y competencia por memoria.
+
+La versión NumPy presenta un comportamiento distinto. Su tiempo con un solo
+proceso ya es muy bajo, de modo que el overhead paralelo domina: para casi todos
+los valores se obtuvo $S(p)<1$. El valor $S(6)=1.019$ representa una diferencia
+de solo 0.010 s respecto de $T(1)$ y está dentro de la variabilidad observada,
+por lo que no constituye evidencia de speedup superlineal. Su eficiencia cae
+desde 0.365 con $p=2$ hasta 0.098 con $p=8$. Por lo tanto, en este computador la
+implementación NumPy es la más rápida en tiempo absoluto, pero su configuración
+más razonable es $p=1$; paralelizarla no entrega una mejora robusta para
+$B=48$, $N=10000$ y $k=300$.
 
 \section*{(h) Overhead $T_o(p)$}
 % Gráfico del overhead en función de p y comentario sobre sus principales fuentes.
@@ -197,13 +350,8 @@ Al lanzar $p$ procesos, los arreglos sintéticos $X$ e $y$ no se replican $p$ ve
 
 
 \section*{Declaración de uso de Inteligencia Artificial}
-En el desarrollo de esta tarea, se utilizaron modelos de lenguaje de Inteligencia Artificial como asistente de programación, estructuración y estudio (Gemini, ..., ...). Específicamente, la herramienta fue empleada para:
-
-\begin{itemize}
-    \item \textbf{Optimización algorítmica:} Guiar la evolución iterativa del código (de implementaciones ingenuas a óptimas), sugiriendo mejoras como la vectorización de ciclos, el manejo determinista de semillas en \texttt{joblib} y la sustitución de inversiones matriciales por resolución de sistemas lineales (\texttt{np.linalg.solve}).
-    \item \textbf{Edición y formato:} Asistir en la estructuración de este documento en \LaTeX.
-\end{itemize}
-
-Todo el código, los tiempos de ejecución y las explicaciones teóricas generadas con el apoyo de la herramienta fueron revisados, ejecutados y validados empíricamente por los integrantes del grupo para asegurar su total correctitud y cumplimiento con las exigencias del enunciado.
+Se utilizó OpenAI Codex como apoyo para revisar y optimizar el código, diseñar
+los experimentos y redactar el informe. Los integrantes del grupo revisaron el
+código y validaron experimentalmente los resultados presentados.
 
 \end{document}
