@@ -225,7 +225,7 @@ orden de las 72 configuraciones fue aleatorizado para reducir el sesgo causado
 por calentamiento del equipo o por el orden de ejecución. Reportamos la mediana,
 por ser menos sensible que la media a interferencias transitorias del sistema.
 
-\begin{table}[h]
+\begin{table}[!ht]
     \centering
     \small
     \begin{tabular}{|c|r|r|r|}
@@ -247,7 +247,7 @@ por ser menos sensible que la media a interferencias transitorias del sistema.
     \label{tab:tiempos-f}
 \end{table}
 
-\begin{figure}[h]
+\begin{figure}[!ht]
     \centering
     \includegraphics[width=0.82\textwidth]{../results/computer_1/tiempos_f.png}
     \caption{Tiempo mediano de ejecución en función de $p$. Las barras se
@@ -288,7 +288,7 @@ por lo que mide escalabilidad fuerte sin mezclar el resultado con una
 implementación secuencial diferente. Además, usar la mediana evita que una
 ejecución excepcionalmente lenta o rápida determine toda la curva.
 
-\begin{table}[h]
+\begin{table}[!ht]
     \centering
     \scriptsize
     \begin{tabular}{|c|cc|cc|cc|}
@@ -312,7 +312,7 @@ ejecución excepcionalmente lenta o rápida determine toda la curva.
     \label{tab:metricas-g}
 \end{table}
 
-\begin{figure}[h]
+\begin{figure}[!ht]
     \centering
     \includegraphics[width=\textwidth]{../results/computer_1/metricas_g.png}
     \caption{Tiempo, speedup y eficiencia observados. En el panel de tiempo,
@@ -341,6 +341,50 @@ $B=48$, $N=10000$ y $k=300$.
 
 \section*{(h) Overhead $T_o(p)$}
 % Gráfico del overhead en función de p y comentario sobre sus principales fuentes.
+Una vez obtenidos los datos del inciso g, podemos calcular el overhead $T_o(p)$ en función de la cantidad de workers, luego posteriormente analizar los 3 métodos.
+Mientras en el inciso anterior se buscaba ver cuanto se ganaba al aumentar la cantidad p de procesos, con métricas como el speedup y la eficiencia, en este inciso se buscará cuanto 
+cuesta paralelizar, y demostra que hay costo y trabajo adicional asociado a la paralelización. La forma de medirlo es con la siguente formula \\
+ \[ 
+ T_o(p) = pT_p - T_1
+ \]
+
+ Para lo siguente se creó un código que calculará los overhead por cada método y fuera aumentando los valores de p.
+Los resultados se pueden observar en las siguentes tablas
+
+\begin{table}[!ht]
+    \centering
+    \small
+    \begin{tabular}{|c|r|r|r|}
+    \hline
+    $p$ & \textbf{BaggingRegressor} & \textbf{sklearn + joblib} & \textbf{NumPy + joblib} \\
+    \hline
+    1 & 0.000 & 0.000 & 0.000 \\
+    2 & 2.681 & 1.743 & 0.907 \\
+    3 & 2.773 & 1.633 & 1.580 \\
+    4 & 5.951 & 6.588 & 2.408 \\
+    5 & 5.386 & 5.769 & 2.600 \\
+    6 & 9.271 & 7.424 & 2.545 \\
+    7 & 8.213 & 11.042 & 3.140 \\
+    8 & 14.756 & 18.428 & 4.804 \\
+    \hline
+    \end{tabular}
+    \caption{Overhead $T_o(p)=p\,T(p)-T(1)$, en segundos, calculado a partir de
+    los tiempos medianos de la Tabla~\ref{tab:tiempos-f}.}
+    \label{tab:overhead-h}
+\end{table}
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.70\textwidth]{../results/computer_1/overhead_h.png}
+    \caption{Overhead $T_o(p)$ en función de $p$ para las tres
+    implementaciones. La línea discontinua en $T_o(p)=0$ corresponde al caso
+    ideal, en que paralelizar no agrega trabajo adicional.}
+    \label{fig:overhead-h}
+\end{figure}
+
+
+
+\clearpage
 
 \section*{(i) Variación de procesos y threads internos}
 % Gráfico variando (p, t) asegurando p * t <= p_max con la mejor versión de (b). Concluya cuál es la mejor combinación.

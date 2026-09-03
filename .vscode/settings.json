@@ -1,0 +1,11 @@
+{
+  "latex-workshop.latex.recipe.default": "lastUsed",
+  "latex-workshop.latex.autoBuild.run": "onFileChange",
+  "latex-workshop.view.pdf.viewer": "tab",
+  "latex-workshop.synctex.afterBuild.enabled": true,
+  "latex-workshop.latex.autoClean.run": "onBuilt",
+  "latex-workshop.latex.clean.fileTypes": [
+    "*.aux", "*.bbl", "*.blg", "*.fdb_latexmk", "*.fls",
+    "*.log", "*.out", "*.toc", "*.nav", "*.snm", "*.vrb"
+  ]
+}
