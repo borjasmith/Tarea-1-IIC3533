@@ -17,6 +17,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import sklearn
+from threadpoolctl import threadpool_info
 
 from bs_auto import bootstrap_auto_v4
 from bs_numpy import bootstrap_numpy_v2
@@ -48,6 +49,11 @@ def write_metadata(path, p_max, repetitions):
                 f"numpy={np.__version__}",
                 f"scikit_learn={sklearn.__version__}",
                 f"joblib={joblib.__version__}",
+                "blas="
+                + ";".join(
+                    f"{pool['internal_api']}:{pool['num_threads']}"
+                    for pool in threadpool_info()
+                ),
                 f"p_max={p_max}",
                 f"repeticiones={repetitions}",
                 "N=10000",

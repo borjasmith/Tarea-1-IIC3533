@@ -41,7 +41,9 @@ def load_results(path):
     return rows
 
 
-def calculate_overhead(rows)
+def calculate_overhead(rows):
+
+    # Función core calcula el overhead con T(1) de cada implementación
 
     implementations = sorted(
         {row["implementation"] for row in rows}
