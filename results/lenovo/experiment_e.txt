@@ -1,0 +1,53 @@
+----- experiment_e.py -p 1 -----
+cores_logicos=8
+p=1, limite_threads=None
+procesos_trabajadores_distintos=1
+  worker pid=43799 OMP_NUM_THREADS=None pools=[('openblas', 8)]
+threadpool_principal=[('openblas', 8)]
+tiempo_s=1.295738
+----- experiment_e.py -p 2 -----
+cores_logicos=8
+p=2, limite_threads=None
+procesos_trabajadores_distintos=2
+  worker pid=43832 OMP_NUM_THREADS=4 pools=[('openblas', 4)]
+  worker pid=43833 OMP_NUM_THREADS=4 pools=[('openblas', 4)]
+threadpool_principal=[('openblas', 8)]
+tiempo_s=0.866668
+----- experiment_e.py -p 4 -----
+cores_logicos=8
+p=4, limite_threads=None
+procesos_trabajadores_distintos=4
+  worker pid=43886 OMP_NUM_THREADS=2 pools=[('openblas', 2)]
+  worker pid=43888 OMP_NUM_THREADS=2 pools=[('openblas', 2)]
+  worker pid=43887 OMP_NUM_THREADS=2 pools=[('openblas', 2)]
+  worker pid=43889 OMP_NUM_THREADS=2 pools=[('openblas', 2)]
+threadpool_principal=[('openblas', 8)]
+tiempo_s=0.711591
+----- experiment_e.py -p 8 -----
+cores_logicos=8
+p=8, limite_threads=None
+procesos_trabajadores_distintos=8
+  worker pid=43931 OMP_NUM_THREADS=1 pools=[('openblas', 1)]
+  worker pid=43929 OMP_NUM_THREADS=1 pools=[('openblas', 1)]
+  worker pid=43930 OMP_NUM_THREADS=1 pools=[('openblas', 1)]
+  worker pid=43934 OMP_NUM_THREADS=1 pools=[('openblas', 1)]
+  worker pid=43933 OMP_NUM_THREADS=1 pools=[('openblas', 1)]
+  worker pid=43932 OMP_NUM_THREADS=1 pools=[('openblas', 1)]
+  worker pid=43928 OMP_NUM_THREADS=1 pools=[('openblas', 1)]
+  worker pid=43927 OMP_NUM_THREADS=1 pools=[('openblas', 1)]
+threadpool_principal=[('openblas', 8)]
+tiempo_s=0.748549
+----- experiment_e.py -p 8 -t 1 -----
+cores_logicos=8
+p=8, limite_threads=1
+procesos_trabajadores_distintos=8
+  worker pid=43982 OMP_NUM_THREADS=1 pools=[('openblas', 1)]
+  worker pid=43979 OMP_NUM_THREADS=1 pools=[('openblas', 1)]
+  worker pid=43978 OMP_NUM_THREADS=1 pools=[('openblas', 1)]
+  worker pid=43984 OMP_NUM_THREADS=1 pools=[('openblas', 1)]
+  worker pid=43983 OMP_NUM_THREADS=1 pools=[('openblas', 1)]
+  worker pid=43980 OMP_NUM_THREADS=1 pools=[('openblas', 1)]
+  worker pid=43985 OMP_NUM_THREADS=1 pools=[('openblas', 1)]
+  worker pid=43981 OMP_NUM_THREADS=1 pools=[('openblas', 1)]
+threadpool_principal=[('openblas', 8)]
+tiempo_s=0.677827
