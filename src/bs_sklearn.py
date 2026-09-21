@@ -18,7 +18,7 @@ def fit_resample_v2(X, y, seed_b):
     N = X.shape[0]
     indices = rng.choice(N, size=N, replace=True)
     
-    model = LinearRegression(fit_intercept=False)
+    model = LinearRegression()
     model.fit(X[indices], y[indices])
     
     return model.coef_

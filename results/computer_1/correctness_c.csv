@@ -1,0 +1,4 @@
+implementation,coverage_pct,mean_width,max_diff_repeat_p1,max_diff_p1_vs_p4
+BaggingRegressor,91.36212624584718,0.03598856117867077,0.0,0.0
+sklearn + joblib,91.69435215946844,0.03606444867732982,0.0,0.0
+NumPy + joblib,91.69435215946844,0.03606444867732916,0.0,0.0

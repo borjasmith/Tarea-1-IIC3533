@@ -9,6 +9,9 @@ import csv
 import os
 import platform
 import random
+import json
+import subprocess
+import sys
 from pathlib import Path
 
 import joblib
@@ -48,6 +51,7 @@ def write_metadata(path, p_max, repetitions):
                 f"numpy={np.__version__}",
                 f"scikit_learn={sklearn.__version__}",
                 f"joblib={joblib.__version__}",
+                f"blas_backend={getattr(np.__config__, 'CONFIG', {}).get('Build Dependencies', {}).get('blas', {}).get('name', 'desconocido')}",
                 f"p_max={p_max}",
                 f"repeticiones={repetitions}",
                 "N=10000",
@@ -100,15 +104,24 @@ def save_plot(rows, path, p_max):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--p-max", type=int, default=os.cpu_count() or 1)
-    parser.add_argument("--repetitions", "-r", type=int, default=3)
+    parser.add_argument("--repetitions", "-r", type=int, default=5)
     parser.add_argument("--output-dir", default="results/computer_1")
+    parser.add_argument("--worker-implementation", choices=list(IMPLEMENTATIONS))
+    parser.add_argument("--worker-p", type=int)
     args = parser.parse_args()
+
+    if args.worker_implementation is not None:
+        if args.worker_p is None:
+            parser.error("--worker-p es obligatorio en modo worker")
+        X, y, _ = generate_data(seed=1111, N=10_000, k=300)
+        _, _, elapsed = IMPLEMENTATIONS[args.worker_implementation](X, y, args.worker_p)
+        print("RESULT_JSON=" + json.dumps({"time_s": elapsed}))
+        return
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     write_metadata(output_dir / "metadata.txt", args.p_max, args.repetitions)
 
-    X, y, _ = generate_data(seed=1111, N=10_000, k=300)
     configurations = [
         (name, p, repetition)
         for repetition in range(1, args.repetitions + 1)
@@ -121,7 +134,23 @@ def main():
     rows = []
     total = len(configurations)
     for index, (name, p, repetition) in enumerate(configurations, start=1):
-        _, _, elapsed = IMPLEMENTATIONS[name](X, y, p)
+        completed = subprocess.run(
+            [
+                sys.executable,
+                str(Path(__file__).resolve()),
+                "--worker-implementation",
+                name,
+                "--worker-p",
+                str(p),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        result_line = next(
+            line for line in completed.stdout.splitlines() if line.startswith("RESULT_JSON=")
+        )
+        elapsed = json.loads(result_line.removeprefix("RESULT_JSON="))["time_s"]
         row = {
             "implementation": name,
             "p": p,
@@ -137,7 +166,7 @@ def main():
 
     rows.sort(key=lambda row: (row["implementation"], row["p"], row["repetition"]))
     with (output_dir / "timings_f.csv").open("w", newline="", encoding="utf-8") as file:
-        writer = csv.DictWriter(file, fieldnames=rows[0].keys())
+        writer = csv.DictWriter(file, fieldnames=rows[0].keys(), lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
 

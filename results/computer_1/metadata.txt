@@ -1,12 +1,16 @@
 sistema=macOS-14.7.8-arm64-arm-64bit
 procesador=arm
+chip=Apple M1
+cores=8 (4 rendimiento, 4 eficiencia)
+memoria=8 GB
 cores_logicos=8
 python=3.9.6
 numpy=2.0.2
 scikit_learn=1.6.1
 joblib=1.5.3
+blas_backend=accelerate
 p_max=8
-repeticiones=3
+repeticiones=5
 N=10000
 k=300
 B=48

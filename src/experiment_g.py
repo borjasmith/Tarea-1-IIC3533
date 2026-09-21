@@ -56,7 +56,7 @@ def load_medians(path):
 
 def write_metrics(metrics, path):
     with path.open("w", newline="", encoding="utf-8") as file:
-        writer = csv.DictWriter(file, fieldnames=metrics[0].keys())
+        writer = csv.DictWriter(file, fieldnames=metrics[0].keys(), lineterminator="\n")
         writer.writeheader()
         writer.writerows(metrics)
 
