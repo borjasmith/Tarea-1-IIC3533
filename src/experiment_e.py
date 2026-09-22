@@ -56,7 +56,7 @@ def main():
     parser.add_argument("--output", default="results/computer_1/observations_e.csv")
     args = parser.parse_args()
 
-    X, y, _ = generate_data(seed=1111, N=10_000, k=300)
+    X, y, _ = generate_data(seed=1111, N=100_000, k=300)
     if args.suite:
         rows = []
         for p in (1, 2, 4, 8):

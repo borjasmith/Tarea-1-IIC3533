@@ -54,7 +54,7 @@ def write_metadata(path, p_max, repetitions):
                 f"blas_backend={getattr(np.__config__, 'CONFIG', {}).get('Build Dependencies', {}).get('blas', {}).get('name', 'desconocido')}",
                 f"p_max={p_max}",
                 f"repeticiones={repetitions}",
-                "N=10000",
+                "N=100000",
                 "k=300",
                 "B=48",
             ]
@@ -104,7 +104,7 @@ def save_plot(rows, path, p_max):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--p-max", type=int, default=os.cpu_count() or 1)
-    parser.add_argument("--repetitions", "-r", type=int, default=5)
+    parser.add_argument("--repetitions", "-r", type=int, default=3)
     parser.add_argument("--output-dir", default="results/computer_1")
     parser.add_argument("--worker-implementation", choices=list(IMPLEMENTATIONS))
     parser.add_argument("--worker-p", type=int)
@@ -113,7 +113,7 @@ def main():
     if args.worker_implementation is not None:
         if args.worker_p is None:
             parser.error("--worker-p es obligatorio en modo worker")
-        X, y, _ = generate_data(seed=1111, N=10_000, k=300)
+        X, y, _ = generate_data(seed=1111, N=100_000, k=300)
         _, _, elapsed = IMPLEMENTATIONS[args.worker_implementation](X, y, args.worker_p)
         print("RESULT_JSON=" + json.dumps({"time_s": elapsed}))
         return

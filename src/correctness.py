@@ -45,7 +45,7 @@ def main():
     parser.add_argument("--output", default="results/computer_1/correctness_c.csv")
     args = parser.parse_args()
 
-    X, y, beta_star = generate_data(seed=1111, N=10_000, k=300)
+    X, y, beta_star = generate_data(seed=1111, N=100_000, k=300)
     beta_hat = np.linalg.solve(X.T @ X, X.T @ y)
     relative_error = np.linalg.norm(beta_hat - beta_star) / np.linalg.norm(beta_star)
     print(f"error_relativo_beta_hat={relative_error:.12f}")

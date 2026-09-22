@@ -82,7 +82,7 @@ def bootstrap_sklearn_v3(X, y, B, p, base_seed=1234):
     return lower_bound, upper_bound, exec_time
 
 if __name__ == "__main__":
-    X, y, beta_star = generate_data(seed=1111, N=10_000, k=300)
+    X, y, beta_star = generate_data(seed=1111, N=100_000, k=300)
     
     # lb, ub, t_exec = bootstrap_sklearn_v1(X, y, B=48, p=1)
     # lb, ub, t_exec = bootstrap_sklearn_v2(X, y, B=48, p=1, base_seed=1234)

@@ -1,6 +1,6 @@
 import numpy as np
 
-def generate_data(seed=1111, N=10_000, k=300):
+def generate_data(seed=1111, N=100_000, k=300):
     rng = np.random.default_rng(seed)
 
     # I: coeficientes 
@@ -18,7 +18,7 @@ def generate_data(seed=1111, N=10_000, k=300):
     return X, y, beta_star
 
 if __name__ == "__main__":
-    N = 10_000
+    N = 100_000
     k = 300
     B = 48
     seed = 1111

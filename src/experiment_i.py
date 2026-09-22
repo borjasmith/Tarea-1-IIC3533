@@ -39,7 +39,7 @@ def bootstrap_numpy_limited(X, y, B, processes, threads, base_seed=1234):
 
 
 def worker(processes, threads):
-    X, y, _ = generate_data(seed=1111, N=10_000, k=300)
+    X, y, _ = generate_data(seed=1111, N=100_000, k=300)
     elapsed = bootstrap_numpy_limited(X, y, 48, processes, threads)
     return {"time_s": elapsed, "visible_threadpools": threadpool_info()}
 
@@ -69,7 +69,7 @@ def save_plot(rows, path):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--p-max", type=int, default=8)
-    parser.add_argument("--repetitions", type=int, default=5)
+    parser.add_argument("--repetitions", type=int, default=3)
     parser.add_argument("--output-dir", default="results/computer_1")
     parser.add_argument("--worker-p", type=int)
     parser.add_argument("--worker-t", type=int)

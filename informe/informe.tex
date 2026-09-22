@@ -23,9 +23,9 @@ Para generar los datos sintéticos, seguimos los siguientes pasos:
 \begin{enumerate}
     \item Generar los datos, usando el generador aleatorio de NumPy (\texttt{np.random.default\_rng}) fijando una semilla base, nosotros la establecimos como 1111.
     \item Generar el vector de coeficientes reales $\beta^* \in \mathbb{R}^{301}$ muestreando de una distribución normal estándar $\mathcal{N}(0,1)$. 
-    \item Crear una matriz base de $10000 \times 300$ con valores independientes $\mathcal{N}(0,1)$.
-    \item Concatenar horizontalmente un vector columna de unos a la matriz base para incorporar el intercepto ($\beta_0$), obteniendo así la matriz de diseño $X \in \mathbb{R}^{10000 \times 301}$.
-    \item Calcular el vector de respuesta $y \in \mathbb{R}^{10000}$ con el producto matricial $y = X\beta^* + \varepsilon$, donde $\varepsilon$ es un vector de ruido con $10000$ muestras i.i.d. de $\mathcal{N}(0,1)$.
+    \item Crear una matriz base de $100\,000 \times 300$ con valores independientes $\mathcal{N}(0,1)$.
+    \item Concatenar horizontalmente un vector columna de unos a la matriz base para incorporar el intercepto ($\beta_0$), obteniendo así la matriz de diseño $X \in \mathbb{R}^{100\,000 \times 301}$.
+    \item Calcular el vector de respuesta $y \in \mathbb{R}^{100\,000}$ con el producto matricial $y = X\beta^* + \varepsilon$, donde $\varepsilon$ es un vector de ruido con $100\,000$ muestras i.i.d. de $\mathcal{N}(0,1)$.
 \end{enumerate}
 
 Para correr el script de generación de datos, se puede ejecutar el siguiente comando en la terminal:
@@ -54,11 +54,11 @@ python src/data_generation.py
     \hline
     \textbf{Versión} & \textbf{Características Principales} & \textbf{Tiempo ($p=1$)} \\
     \hline
-    v1 & Intercepto activo, ciclo for & 4.7474 s \\
-    v2 & Sin intercepto, ciclo for & 5.1836 s \\
-    v3 & Sin intercepto, list comprehension & 5.3599 s \\
-    v4 & Sin inter., list comp., bootstrap explícito & 4.2048 s \\
-    v5 & Sin inter., ciclo for, bootstrap explícito & 4.1570 s \\
+    v1 & Intercepto activo, ciclo for & 66.040 s \\
+    v2 & Sin intercepto, ciclo for & 84.483 s \\
+    v3 & Sin intercepto, list comprehension & 118.939 s \\
+    v4 & Sin inter., reproducible, bootstrap explícito & 105.072 s \\
+    v5 & Sin inter., ciclo for, bootstrap explícito & 93.132 s \\
     \hline
     \end{tabular}
     \caption{Tiempos de ejecución empíricos para distintas iteraciones de \texttt{bs\_auto.py}.}
@@ -70,10 +70,12 @@ La \textbf{Versión 4} es computacional y estructuralmente la más óptima.
 
 En primer lugar, al definir \texttt{fit\_intercept=False}, se evita estimar un intercepto separado cuando la matriz $X$ ya incluye la columna de unos. Declarar \texttt{bootstrap=True} hace explícito el remuestreo exigido, mientras que \texttt{random\_state} permite reproducir los mismos intervalos al cambiar el número de procesos.
 
-Si bien la Versión 5 registró un tiempo marginalmente inferior en esa
-ejecución (4.15 s frente a 4.20 s), una diferencia de 0.05 s no permite afirmar
-que una forma de extraer 48 vectores sea más rápida. Elegimos la Versión 4 por
-claridad, concisión y reproducibilidad, no por esa diferencia aislada.
+Los tiempos variaron entre 66 y 119 s y no siguen una tendencia monótona; una
+sola medición por versión no permite atribuir esas diferencias a la forma de
+extraer solo 48 vectores. La v1 fue la más rápida, pero es incorrecta para
+$\beta_0$. Elegimos la v4 por claridad, correctitud y reproducibilidad, no por
+ser el mínimo aislado. Los valores se guardaron en
+\texttt{results/computer\_1/timings\_b.csv}.
 
 \subsection*{Evolución de \texttt{bs\_sklearn.py}}
 
@@ -92,9 +94,9 @@ claridad, concisión y reproducibilidad, no por esa diferencia aislada.
     \hline
     \textbf{Versión} & \textbf{Características Principales} & \textbf{Tiempo ($p=1$)} \\
     \hline
-    v1 & RNG global (incorrecto), intercepto activo & 5.9958 s \\
-    v2 & RNG independiente (correcto), intercepto activo & 7.7394 s \\
-    v3 & RNG independiente, sin intercepto & 5.5406 s \\
+    v1 & RNG global (no reproducible), intercepto activo & 87.877 s \\
+    v2 & RNG independiente, intercepto activo & 87.005 s \\
+    v3 & RNG independiente, sin intercepto & 71.948 s \\
     \hline
     \end{tabular}
     \caption{Tiempos de ejecución empíricos para distintas iteraciones de \texttt{bs\_sklearn.py}.}
@@ -102,7 +104,7 @@ claridad, concisión y reproducibilidad, no por esa diferencia aislada.
 
 \textbf{3. Análisis de la versión óptima}
 
-La \textbf{Versión 3} representa la implementación correcta y más eficiente utilizando scikit-learn de forma explícita. El manejo independiente de las semillas elimina las condiciones de carrera paralela, mientras que la desactivación del intercepto evita cálculos innecesarios sobre la matriz $X$, devolviendo el tiempo de ejecución a niveles óptimos ($\sim$5.54s) sin comprometer la correctitud del algoritmo iterativo.
+La \textbf{Versión 3} representa la implementación correcta y más eficiente utilizando scikit-learn de forma explícita. El manejo independiente de las semillas hace reproducibles los remuestreos, mientras que la desactivación del intercepto evita trabajo redundante y redujo el tiempo observado a 71.948 s.
 
 \subsection*{Evolución de \texttt{bs\_numpy.py}}
 
@@ -120,8 +122,8 @@ La \textbf{Versión 3} representa la implementación correcta y más eficiente u
     \hline
     \textbf{Versión} & \textbf{Características Principales} & \textbf{Tiempo ($p=1$)} \\
     \hline
-    v1 & Cálculo explícito con \texttt{np.linalg.inv()} & 1.0937 s \\
-    v2 & Resolución de sistema con \texttt{np.linalg.solve()} & 1.0204 s \\
+    v1 & Cálculo explícito con \texttt{np.linalg.inv()} & 5.480 s \\
+    v2 & Resolución de sistema con \texttt{np.linalg.solve()} & 5.566 s \\
     \hline
     \end{tabular}
     \caption{Tiempos de ejecución empíricos para distintas iteraciones de \texttt{bs\_numpy.py}.}
@@ -131,7 +133,7 @@ La \textbf{Versión 3} representa la implementación correcta y más eficiente u
 
 La \textbf{Versión 2} es la implementación óptima y definitiva para esta sección. 
 
-Aunque la diferencia de tiempo empírica en una sola ejecución con $p=1$ parece marginal ($\sim$0.07 segundos), el cambio posee un peso teórico y arquitectónico fundamental. Calcular explícitamente la inversa de una matriz mediante \texttt{np.linalg.inv()} es computacionalmente ineficiente y altamente susceptible a errores de redondeo de punto flotante a medida que la dimensionalidad aumenta. 
+En esta ejecución aislada, \texttt{inv} fue 0.086 s más rápido, una diferencia demasiado pequeña para establecer una ventaja. Elegimos \texttt{solve} porque evita construir explícitamente la inversa y es la formulación numérica apropiada para resolver el sistema.
 
 Al utilizar \texttt{np.linalg.solve()}, NumPy delega la operación a subrutinas optimizadas de álgebra lineal (LAPACK), que resuelven el sistema $(X^{\top}X)\hat{\beta}=X^{\top}y$ sin construir explícitamente la inversa. Esto reduce operaciones y error numérico respecto de \texttt{inv}; no obstante, ambas versiones forman las ecuaciones normales y, por tanto, siguen siendo menos estables que resolver directamente el problema de mínimos cuadrados mediante QR o SVD.
 
@@ -146,7 +148,7 @@ python src/bs_numpy.py
 
 Primero calculamos $\hat\beta$ sobre el conjunto completo, como indica el paso
 1 del algoritmo. El error relativo
-$\lVert\hat\beta-\beta^*\rVert_2/\lVert\beta^*\rVert_2$ fue 0.00989, lo que
+$\lVert\hat\beta-\beta^*\rVert_2/\lVert\beta^*\rVert_2$ fue 0.00311, lo que
 confirma que el ajuste recupera adecuadamente los coeficientes verdaderos.
 
 Luego ejecutamos cada versión dos veces con $p=1$ y una vez con $p=4$, usando
@@ -161,9 +163,9 @@ ancho medio de los intervalos y la máxima diferencia entre ejecuciones.
     \textbf{Implementación} & \textbf{Cobertura} & \textbf{Ancho medio}
     & \textbf{Rep. $p=1$} & \textbf{$p=1$ vs. $p=4$} \\
     \hline
-    BaggingRegressor & 91.36\% & 0.035989 & 0 & 0 \\
-    sklearn + joblib & 91.69\% & 0.036064 & 0 & 0 \\
-    NumPy + joblib & 91.69\% & 0.036064 & 0 & 0 \\
+    BaggingRegressor & 91.69\% & 0.011282 & 0 & 0 \\
+    sklearn + joblib & 93.36\% & 0.011373 & 0 & 0 \\
+    NumPy + joblib & 93.36\% & 0.011373 & 0 & 0 \\
     \hline
     \end{tabular}
     \caption{Correctitud y reproducibilidad. Las dos últimas columnas muestran
@@ -174,7 +176,7 @@ ancho medio de los intervalos y la máxima diferencia entre ejecuciones.
 Las coberturas son similares y razonablemente cercanas al 95\% nominal,
 considerando que solo se usan $B=48$ remuestreos. Las versiones manuales
 emplean exactamente los mismos índices y sus intervalos difieren como máximo
-en $2.27\times10^{-14}$, debido al redondeo de las rutinas de álgebra lineal.
+en $4.80\times10^{-14}$, debido al redondeo de las rutinas de álgebra lineal.
 \texttt{BaggingRegressor} usa otra secuencia de remuestreo y por eso no produce
 los mismos extremos, pero su cobertura y ancho son comparables.
 
@@ -230,10 +232,10 @@ remuestreos se distribuyen entre procesos independientes.
     \hline
     $p$ & \textbf{Workers observados} & \textbf{Tiempo mediano [s]} \\
     \hline
-    1 & 1 & 0.536 \\
-    2 & 2 & 0.559 \\
-    4 & 4 & 0.481 \\
-    8 & 8 & 0.470 \\
+    1 & 1 & 5.052 \\
+    2 & 2 & 4.409 \\
+    4 & 4 & 4.003 \\
+    8 & 8 & 5.531 \\
     \hline
     \end{tabular}
     \caption{Actividad observada al ejecutar la versión NumPy.}
@@ -246,10 +248,10 @@ reportado por \texttt{threadpoolctl}. Al cargar SciPy y scikit-learn sí aparece
 un pool OpenBLAS y uno OpenMP de 8 threads, pero estos pertenecen a dichas
 bibliotecas y no demuestran que \texttt{np.linalg.solve} use esos pools.
 
-Los tiempos no presentan una degradación al aumentar $p$, por lo que no hay
-evidencia directa de \textit{oversubscription} en esta ejecución. No obstante,
-la falta de visibilidad sobre Accelerate impide conocer el valor efectivo de
-$t$; por ello la conclusión es limitada y no equivale a demostrar que $t=1$.
+El tiempo mejora hasta $p=4$, pero empeora un 38\% al pasar de $p=4$ a $p=8$.
+Esto evidencia saturación y competencia por memoria; también es compatible con
+\textit{oversubscription}, aunque la falta de visibilidad sobre Accelerate
+impide conocer el valor efectivo de $t$ y atribuirle por sí sola la degradación.
 
 En general, sí existiría oversubscription si cada uno de los $p$ procesos
 lanzara $t$ threads BLAS y se cumpliera $p\,t>p_{\max}$. En una instalación
@@ -265,10 +267,10 @@ Python. Las observaciones completas quedaron almacenadas en
 El primer computador posee $p_{\max}=8$ cores lógicos. Comparamos las
 versiones finales \texttt{bootstrap\_auto\_v4},
 \texttt{bootstrap\_sklearn\_v3} y \texttt{bootstrap\_numpy\_v2} usando los
-mismos datos ($N=10000$, $k=300$), $B=48$ y las mismas semillas. Para cada
-implementación y cada $p\in\{1,\ldots,8\}$ se realizaron cinco ejecuciones,
+mismos datos ($N=100\,000$, $k=300$), $B=48$ y las mismas semillas. Para cada
+implementación y cada $p\in\{1,\ldots,8\}$ se realizaron tres ejecuciones,
 cada una en un intérprete Python nuevo para impedir que joblib reutilizara un
-pool creado por una medición anterior. El orden de las 120 configuraciones fue aleatorizado para reducir el sesgo causado
+pool creado por una medición anterior. El orden de las 72 configuraciones fue aleatorizado para reducir el sesgo causado
 por calentamiento del equipo o por el orden de ejecución. Reportamos la mediana,
 por ser menos sensible que la media a interferencias transitorias del sistema.
 
@@ -279,18 +281,18 @@ por ser menos sensible que la media a interferencias transitorias del sistema.
     \hline
     $p$ & \textbf{BaggingRegressor} & \textbf{sklearn + joblib} & \textbf{NumPy + joblib} \\
     \hline
-    1 & 13.988 & 10.658 & 0.614 \\
-    2 & 7.866 & 8.051 & 0.733 \\
-    3 & 5.000 & 5.308 & 0.716 \\
-    4 & 4.816 & 5.069 & 0.710 \\
-    5 & 4.160 & 4.602 & 0.763 \\
-    6 & 4.381 & 4.591 & 0.825 \\
-    7 & 4.193 & 4.899 & 0.793 \\
-    8 & 4.379 & 4.773 & 0.811 \\
+    1 & 86.843 & 84.737 & 6.017 \\
+    2 & 56.377 & 60.699 & 5.029 \\
+    3 & 50.298 & 55.099 & 4.232 \\
+    4 & 56.254 & 55.999 & 5.497 \\
+    5 & 46.518 & 59.245 & 4.357 \\
+    6 & 62.251 & 72.303 & 5.479 \\
+    7 & 64.378 & 114.517 & 5.039 \\
+    8 & 73.594 & 127.574 & 4.288 \\
     \hline
     \end{tabular}
     \caption{Mediana de los tiempos de ejecución $T(p)$, en segundos, para
-    cinco repeticiones aisladas en el primer computador.}
+    tres repeticiones aisladas en el primer computador.}
     \label{tab:tiempos-f}
 \end{table}
 
@@ -298,27 +300,26 @@ por ser menos sensible que la media a interferencias transitorias del sistema.
     \centering
     \includegraphics[width=0.82\textwidth]{../results/computer_1/tiempos_f.png}
     \caption{Tiempo mediano de ejecución en función de $p$. Las barras se
-    extienden entre el mínimo y el máximo de las cinco repeticiones.}
+    extienden entre el mínimo y el máximo de las tres repeticiones.}
     \label{fig:tiempos-f}
 \end{figure}
 
 La implementación basada solamente en NumPy fue la más rápida para todos los
-valores de $p$: con un proceso tardó aproximadamente 0.614 s, frente a 13.988 s
-de \texttt{BaggingRegressor} y 10.658 s de la versión manual con scikit-learn.
+valores de $p$: con un proceso tardó aproximadamente 6.017 s, frente a 86.843 s
+de \texttt{BaggingRegressor} y 84.737 s de la versión manual con scikit-learn.
 La diferencia se debe principalmente a que \texttt{LinearRegression} realiza
 más trabajo general para ajustar cada modelo, mientras que la versión NumPy
 resuelve directamente las ecuaciones normales.
 
 Las dos implementaciones basadas en scikit-learn mejoraron al aumentar $p$
-hasta aproximadamente cinco o seis procesos. El mejor tiempo mediano fue
-4.160 s con $p=5$ para \texttt{BaggingRegressor} y 4.591 s con $p=6$ para
-\texttt{sklearn + joblib}. En cambio, NumPy no escaló al aumentar los procesos:
-su menor tiempo fue 0.614 s con $p=1$ y todas las configuraciones paralelas
-fueron más lentas. En esta versión cada tarea es
-tan breve que el costo de crear o coordinar procesos, despachar las 48 tareas y
-administrar sus resultados supera el beneficio. En las versiones de
-scikit-learn, usar más de cinco o seis procesos tampoco mejora de forma estable,
-debido al overhead y a la competencia por recursos compartidos.
+hasta un punto intermedio. El mejor tiempo mediano fue 46.518 s con $p=5$ para
+\texttt{BaggingRegressor} y 55.099 s con $p=3$ para
+\texttt{sklearn + joblib}. Con $p=8$, scikit-learn empeoró hasta 127.574 s,
+debido a la presión de memoria de los remuestreos de 100\,000 filas en un equipo
+con 8 GB. NumPy también obtuvo beneficio paralelo: su mejor tiempo fue 4.232 s
+con $p=3$, aunque $p=5$ y $p=8$ entregaron tiempos cercanos. La mejora está
+lejos de ser lineal por el overhead, las copias de cada remuestra y la
+competencia por ancho de banda de memoria.
 
 \section*{(g) Speedup S(p) y Eficiencia E(p)}
 
@@ -327,9 +328,9 @@ implementación:
 \[
     S(p)=\frac{T(1)}{T(p)}, \qquad E(p)=\frac{S(p)}{p}.
 \]
-Elegimos como $T(1)$ la mediana de las cinco ejecuciones de la misma
-implementación con $p=1$: 13.988 s para \texttt{BaggingRegressor}, 10.658 s para
-\texttt{sklearn + joblib} y 0.614 s para \texttt{NumPy + joblib}. Esta elección
+Elegimos como $T(1)$ la mediana de las tres ejecuciones de la misma
+implementación con $p=1$: 86.843 s para \texttt{BaggingRegressor}, 84.737 s para
+\texttt{sklearn + joblib} y 6.017 s para \texttt{NumPy + joblib}. Esta elección
 mantiene constantes el algoritmo, los datos, las semillas y la instrumentación,
 por lo que mide escalabilidad fuerte sin mezclar el resultado con una
 implementación secuencial diferente. Además, usar la mediana evita que una
@@ -346,13 +347,13 @@ ejecución excepcionalmente lenta o rápida determine toda la curva.
     $p$ & $S(p)$ & $E(p)$ & $S(p)$ & $E(p)$ & $S(p)$ & $E(p)$ \\
     \hline
     1 & 1.000 & 1.000 & 1.000 & 1.000 & 1.000 & 1.000 \\
-    2 & 1.778 & 0.889 & 1.324 & 0.662 & 0.838 & 0.419 \\
-    3 & 2.798 & 0.933 & 2.008 & 0.669 & 0.858 & 0.286 \\
-    4 & 2.904 & 0.726 & 2.102 & 0.526 & 0.865 & 0.216 \\
-    5 & 3.363 & 0.673 & 2.316 & 0.463 & 0.805 & 0.161 \\
-    6 & 3.193 & 0.532 & 2.322 & 0.387 & 0.745 & 0.124 \\
-    7 & 3.336 & 0.477 & 2.175 & 0.311 & 0.775 & 0.111 \\
-    8 & 3.194 & 0.399 & 2.233 & 0.279 & 0.757 & 0.095 \\
+    2 & 1.540 & 0.770 & 1.396 & 0.698 & 1.196 & 0.598 \\
+    3 & 1.727 & 0.576 & 1.538 & 0.513 & 1.422 & 0.474 \\
+    4 & 1.544 & 0.386 & 1.513 & 0.378 & 1.095 & 0.274 \\
+    5 & 1.867 & 0.373 & 1.430 & 0.286 & 1.381 & 0.276 \\
+    6 & 1.395 & 0.233 & 1.172 & 0.195 & 1.098 & 0.183 \\
+    7 & 1.349 & 0.193 & 0.740 & 0.106 & 1.194 & 0.171 \\
+    8 & 1.180 & 0.148 & 0.664 & 0.083 & 1.403 & 0.175 \\
     \hline
     \end{tabular}
     \caption{Speedup y eficiencia calculados a partir de los tiempos medianos.}
@@ -369,20 +370,18 @@ ejecución excepcionalmente lenta o rápida determine toda la curva.
 \end{figure}
 
 Ninguna implementación alcanzó la curva ideal. \texttt{BaggingRegressor}
-obtuvo su mayor speedup en $p=5$, con $S(5)=3.363$ y $E(5)=0.673$. La versión
-manual con scikit-learn alcanzó su máximo en $p=6$, con $S(6)=2.322$ y
-$E(6)=0.387$. En ambas versiones el trabajo de ajustar 48 regresiones es
+obtuvo su mayor speedup en $p=5$, con $S(5)=1.867$ y $E(5)=0.373$. La versión
+manual con scikit-learn alcanzó su máximo en $p=3$, con $S(3)=1.538$ y
+$E(3)=0.513$. En ambas versiones el trabajo de ajustar 48 regresiones es
 suficiente para amortizar parte del costo de los procesos, pero la eficiencia
 disminuye al crecer $p$ debido a creación y coordinación de procesos,
 distribución de tareas, movimiento de resultados y competencia por memoria.
 
-La versión NumPy presenta un comportamiento distinto. Su tiempo con un solo
-proceso ya es muy bajo, de modo que el overhead paralelo domina: para todos los
-valores $p>1$ se obtuvo $S(p)<1$. Su eficiencia cae
-desde 0.419 con $p=2$ hasta 0.095 con $p=8$. Por lo tanto, en este computador la
-implementación NumPy es la más rápida en tiempo absoluto, pero su configuración
-más razonable es $p=1$; paralelizarla no entrega una mejora robusta para
-$B=48$, $N=10000$ y $k=300$.
+La versión NumPy es la más rápida en tiempo absoluto y, con el problema más
+grande, obtiene speedup para todos los valores $p>1$. Su máximo es
+$S(3)=1.422$, con $E(3)=0.474$. El speedup vuelve a 1.403 en $p=8$, pero con una
+eficiencia de solo 0.175; por ello $p=3$ es preferible: alcanza el menor tiempo
+usando menos procesos para $B=48$, $N=100\,000$ y $k=300$.
 
 \section*{(h) Overhead $T_o(p)$}
 
@@ -401,13 +400,13 @@ proceso. Por definición, $T_o(1)=0$.
     $p$ & \textbf{BaggingRegressor} & \textbf{sklearn + joblib} & \textbf{NumPy + joblib} \\
     \hline
     1 & 0.000 & 0.000 & 0.000 \\
-    2 & 1.744 & 5.444 & 0.852 \\
-    3 & 1.011 & 5.266 & 1.533 \\
-    4 & 5.277 & 9.620 & 2.225 \\
-    5 & 6.811 & 12.355 & 3.202 \\
-    6 & 12.296 & 16.887 & 4.335 \\
-    7 & 15.363 & 23.638 & 4.934 \\
-    8 & 21.043 & 27.524 & 5.873 \\
+    2 & 25.910 & 36.662 & 4.041 \\
+    3 & 64.050 & 80.560 & 6.679 \\
+    4 & 138.173 & 139.259 & 15.970 \\
+    5 & 145.748 & 211.488 & 15.768 \\
+    6 & 286.661 & 349.083 & 26.855 \\
+    7 & 363.803 & 716.886 & 29.256 \\
+    8 & 501.910 & 935.855 & 28.287 \\
     \hline
     \end{tabular}
     \caption{Overhead total $T_o(p)$, en segundos.}
@@ -426,15 +425,16 @@ serialización o mapeo de $X$ e $y$, el despacho de las 48 tareas, la creación
 de $X^{(b)}$ e $y^{(b)}$, la recolección de coeficientes, la sincronización y
 la competencia por memoria y caché. En NumPy el overhead absoluto es menor,
 pero es grande respecto de su $T(1)$; por eso no obtiene speedup. Las pequeñas
-irregularidades, como el descenso entre $p=2$ y $p=3$ en
-\texttt{BaggingRegressor}, corresponden a variabilidad experimental.
+irregularidades menores corresponden a variabilidad experimental. El gran
+aumento de scikit-learn en $p=7$ y $p=8$ es consistente con la competencia por
+memoria al mantener varias remuestras de aproximadamente 241 MB.
 
 \section*{(i) Variación de procesos y threads internos}
 
 Usamos la versión NumPy, que fue la más rápida en (b) y (f), y evaluamos las
 20 combinaciones enteras $(p,t)$ que satisfacen $p\,t\leq8$. El límite se aplicó
 dentro de cada tarea mediante \texttt{threadpool\_limits(limits=t)}. Cada
-combinación se ejecutó cinco veces en un intérprete nuevo y se reportó la
+combinación se ejecutó tres veces en un intérprete nuevo y se reportó la
 mediana.
 
 \begin{figure}[h]
@@ -445,19 +445,19 @@ mediana.
     \label{fig:tiempos-i}
 \end{figure}
 
-La menor mediana observada fue 0.630 s con $(p,t)=(1,5)$, seguida por 0.640 s
-con $(1,1)$, 0.644 s con $(1,6)$ y 0.647 s con $(1,4)$. La diferencia entre
-estas configuraciones es pequeña frente a la dispersión de las repeticiones.
-Todas las configuraciones con más de un proceso fueron más lentas; por ejemplo,
-$(2,3)$ tardó 0.761 s, $(4,2)$ 0.846 s y $(8,1)$ 1.059 s.
+La menor mediana observada fue 4.068 s con $(p,t)=(3,2)$, seguida por 4.234 s
+con $(4,1)$ y 4.436 s con $(3,1)$. La configuración $(1,1)$ tardó 5.580 s,
+por lo que el aumento de trabajo por remuestreo permite ahora amortizar el
+overhead de varios procesos. En cambio, $(8,1)$ tardó 5.878 s y no mejora la
+ejecución secuencial de manera robusta.
 
 Existe una limitación importante: \texttt{threadpool\_info()} no detecta Apple
 Accelerate, por lo que $t$ es el límite solicitado, pero no fue posible verificar
 el número efectivo de threads internos. En consecuencia, la mejor combinación
-nominal es $(1,5)$, pero no hay evidencia suficiente para atribuir su pequeña
-ventaja al uso real de cinco threads. La recomendación conservadora para este
-problema es $(p,t)=(1,1)$: logra un tiempo estadísticamente comparable, evita
-oversubscription y usa menos recursos. Los 100 tiempos individuales están en
+nominal es $(3,2)$, pero no es posible atribuir separadamente la mejora a dos
+threads internos efectivos. Aun así, esta combinación satisface $pt=6\leq8$,
+obtiene la menor mediana y evita la saturación observada al usar ocho procesos;
+por ello es la recomendada para este computador. Los 60 tiempos individuales están en
 \texttt{results/computer\_1/timings\_i.csv}.
 
 \section*{(j) Comparación entre computadores}
