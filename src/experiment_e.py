@@ -11,7 +11,7 @@ from joblib import Parallel, delayed
 from threadpoolctl import threadpool_info, threadpool_limits
 
 from bs_numpy import bootstrap_numpy_v2
-from data_generation import generate_data
+from data_generation import N_OBS, generate_data
 
 
 def worker_info():
@@ -54,12 +54,15 @@ def main():
     parser.add_argument("--suite", action="store_true")
     parser.add_argument("--repetitions", type=int, default=3)
     parser.add_argument("--output", default="results/computer_1/observations_e.csv")
+    parser.add_argument("--n-obs", type=int, default=N_OBS)
+    parser.add_argument("--p-max", type=int, default=os.cpu_count() or 1)
     args = parser.parse_args()
 
-    X, y, _ = generate_data(seed=1111, N=10_000, k=300)
+    X, y, _ = generate_data(N=args.n_obs)
     if args.suite:
         rows = []
-        for p in (1, 2, 4, 8):
+        p_values = sorted({p for p in (1, 2, 4, 8, args.p_max) if p <= args.p_max})
+        for p in p_values:
             for repetition in range(1, args.repetitions + 1):
                 row = run_configuration(X, y, p, args.threads)
                 row["repetition"] = repetition

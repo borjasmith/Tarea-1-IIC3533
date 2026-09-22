@@ -66,7 +66,7 @@ def main():
     ax.set_title("Overhead total en función del número de procesos")
     ax.set_xlabel("Número de procesos p")
     ax.set_ylabel(r"$T_o(p)=pT(p)-T(1)$ [s]")
-    ax.set_xticks(range(1, 9))
+    ax.set_xticks(sorted({row["p"] for row in rows}))
     ax.grid(alpha=0.3)
     ax.legend()
     fig.tight_layout()

@@ -24,7 +24,7 @@ import sklearn
 from bs_auto import bootstrap_auto_v4
 from bs_numpy import bootstrap_numpy_v2
 from bs_sklearn import bootstrap_sklearn_v3
-from data_generation import generate_data
+from data_generation import N_OBS, generate_data
 
 
 IMPLEMENTATIONS = {
@@ -40,7 +40,7 @@ IMPLEMENTATIONS = {
 }
 
 
-def write_metadata(path, p_max, repetitions):
+def write_metadata(path, p_max, repetitions, n_obs):
     path.write_text(
         "\n".join(
             [
@@ -54,7 +54,7 @@ def write_metadata(path, p_max, repetitions):
                 f"blas_backend={getattr(np.__config__, 'CONFIG', {}).get('Build Dependencies', {}).get('blas', {}).get('name', 'desconocido')}",
                 f"p_max={p_max}",
                 f"repeticiones={repetitions}",
-                "N=10000",
+                f"N={n_obs}",
                 "k=300",
                 "B=48",
             ]
@@ -108,19 +108,20 @@ def main():
     parser.add_argument("--output-dir", default="results/computer_1")
     parser.add_argument("--worker-implementation", choices=list(IMPLEMENTATIONS))
     parser.add_argument("--worker-p", type=int)
+    parser.add_argument("--n-obs", type=int, default=N_OBS)
     args = parser.parse_args()
 
     if args.worker_implementation is not None:
         if args.worker_p is None:
             parser.error("--worker-p es obligatorio en modo worker")
-        X, y, _ = generate_data(seed=1111, N=10_000, k=300)
+        X, y, _ = generate_data(N=args.n_obs)
         _, _, elapsed = IMPLEMENTATIONS[args.worker_implementation](X, y, args.worker_p)
         print("RESULT_JSON=" + json.dumps({"time_s": elapsed}))
         return
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    write_metadata(output_dir / "metadata.txt", args.p_max, args.repetitions)
+    write_metadata(output_dir / "metadata.txt", args.p_max, args.repetitions, args.n_obs)
 
     configurations = [
         (name, p, repetition)
@@ -142,6 +143,8 @@ def main():
                 name,
                 "--worker-p",
                 str(p),
+                "--n-obs",
+                str(args.n_obs),
             ],
             check=True,
             capture_output=True,

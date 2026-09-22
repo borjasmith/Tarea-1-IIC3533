@@ -3,6 +3,7 @@
 import argparse
 import csv
 import json
+import os
 import random
 import subprocess
 import sys
@@ -16,7 +17,7 @@ import numpy as np
 from joblib import Parallel, delayed
 from threadpoolctl import threadpool_info, threadpool_limits
 
-from data_generation import generate_data
+from data_generation import N_OBS, generate_data
 
 
 def fit_numpy_limited(X, y, seed_b, threads):
@@ -38,13 +39,13 @@ def bootstrap_numpy_limited(X, y, B, processes, threads, base_seed=1234):
     return time.perf_counter() - start
 
 
-def worker(processes, threads):
-    X, y, _ = generate_data(seed=1111, N=10_000, k=300)
+def worker(processes, threads, n_obs):
+    X, y, _ = generate_data(N=n_obs)
     elapsed = bootstrap_numpy_limited(X, y, 48, processes, threads)
     return {"time_s": elapsed, "visible_threadpools": threadpool_info()}
 
 
-def save_plot(rows, path):
+def save_plot(rows, path, p_max):
     fig, ax = plt.subplots(figsize=(8, 5))
     thread_values = sorted({row["t"] for row in rows})
     for threads in thread_values:
@@ -55,10 +56,10 @@ def save_plot(rows, path):
             values = [row["time_s"] for row in selected if row["p"] == p]
             medians.append(float(np.median(values)))
         ax.plot(processes, medians, "o-", label=f"t={threads}")
-    ax.set_title(r"Tiempo para combinaciones $(p,t)$ con $p\,t\leq 8$")
+    ax.set_title(rf"Tiempo para combinaciones $(p,t)$ con $p\,t\leq {p_max}$")
     ax.set_xlabel("Número de procesos p")
     ax.set_ylabel("Tiempo mediano [s]")
-    ax.set_xticks(range(1, 9))
+    ax.set_xticks(range(1, p_max + 1))
     ax.grid(alpha=0.3)
     ax.legend(title="Límite solicitado t", ncols=2, fontsize=8)
     fig.tight_layout()
@@ -68,17 +69,18 @@ def save_plot(rows, path):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--p-max", type=int, default=8)
+    parser.add_argument("--p-max", type=int, default=os.cpu_count() or 1)
     parser.add_argument("--repetitions", type=int, default=5)
     parser.add_argument("--output-dir", default="results/computer_1")
     parser.add_argument("--worker-p", type=int)
     parser.add_argument("--worker-t", type=int)
+    parser.add_argument("--n-obs", type=int, default=N_OBS)
     args = parser.parse_args()
 
     if args.worker_p is not None:
         if args.worker_t is None:
             parser.error("--worker-t es obligatorio en modo worker")
-        print("RESULT_JSON=" + json.dumps(worker(args.worker_p, args.worker_t)))
+        print("RESULT_JSON=" + json.dumps(worker(args.worker_p, args.worker_t, args.n_obs)))
         return
 
     combinations = [
@@ -100,6 +102,8 @@ def main():
                 str(p),
                 "--worker-t",
                 str(t),
+                "--n-obs",
+                str(args.n_obs),
             ],
             check=True,
             capture_output=True,
@@ -132,7 +136,7 @@ def main():
         writer = csv.DictWriter(file, fieldnames=rows[0].keys(), lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
-    save_plot(rows, output_dir / "tiempos_i.png")
+    save_plot(rows, output_dir / "tiempos_i.png", args.p_max)
 
     medians = []
     for p, t in sorted({(row["p"], row["t"]) for row in rows}):

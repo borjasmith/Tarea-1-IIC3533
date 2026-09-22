@@ -120,7 +120,7 @@ def bootstrap_auto_v5(X, y, B, p):
     return lower_bound, upper_bound, exec_time
 
 if __name__ == "__main__":
-    X, y, beta_star = generate_data(seed=1111, N=10_000, k=300)
+    X, y, beta_star = generate_data()
     
     # lb, ub, t_exec = bootstrap_auto_v1(X, y, B=48, p=1)
     # lb, ub, t_exec = bootstrap_auto_v2(X, y, B=48, p=1)

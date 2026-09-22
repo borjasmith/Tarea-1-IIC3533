@@ -9,7 +9,7 @@ import numpy as np
 from bs_auto import bootstrap_auto_v4
 from bs_numpy import bootstrap_numpy_v2
 from bs_sklearn import bootstrap_sklearn_v3
-from data_generation import generate_data
+from data_generation import N_OBS, generate_data
 
 
 METHODS = {
@@ -43,9 +43,10 @@ def max_interval_difference(first, second):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", default="results/computer_1/correctness_c.csv")
+    parser.add_argument("--n-obs", type=int, default=N_OBS)
     args = parser.parse_args()
 
-    X, y, beta_star = generate_data(seed=1111, N=10_000, k=300)
+    X, y, beta_star = generate_data(N=args.n_obs)
     beta_hat = np.linalg.solve(X.T @ X, X.T @ y)
     relative_error = np.linalg.norm(beta_hat - beta_star) / np.linalg.norm(beta_star)
     print(f"error_relativo_beta_hat={relative_error:.12f}")
