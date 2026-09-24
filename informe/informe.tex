@@ -463,41 +463,34 @@ por ello es la recomendada para este computador. Los 60 tiempos individuales est
 \texttt{results/computer\_1/timings\_i.csv}.
 
 
-\subsection*{Anexo: control efectivo de $t$ en el computador 2}
+\subsection*{Subanexo: control efectivo de $t$ con el computador 2}
 
-En los dos computadores el límite de threads no tuvo efecto real, porque la
-librería de álgebra lineal que usa el NumPy de \texttt{pip} en macOS (Accelerate)
-no es controlable con \texttt{threadpoolctl}. Para verificar que el
-experimento funciona cuando el límite sí se aplica, en el computador 2 se
-repitió (i) en un ambiente conda, como recomienda el enunciado, donde NumPy
-queda enlazado a OpenBLAS. Se mantuvieron las mismas versiones, scripts y
-datos; solo cambió la librería de álgebra lineal. Los resultados están en
-\texttt{results/computer\_2\_openblas/}.
+Al hacer los experimentos utilizamos 2 macOS con las mismas versiones, mas no un ambiente conda, por ende NumPy utilizaba una librería
+de Mac llamada Accelerate~\cite{apple-blas}, la cual no permite ver ni limitar sus threads con threadpoolctl. Por ende, si bien el inciso (i)
+se hizo con el computador 1, en este subanexo presentamos un análisis con el computador 2 (el Mac con chip M5 cuyas especificaciones
+están en el inciso de comparación de computadores) simulando otro ambiente, uno con conda, que usa OpenBLAS~\cite{openblas-faq} en vez de Accelerate. Cabe destacar
+que es diferente al del resto de los experimentos pasados, pero sirve para ilustrar el efecto del inciso (i) cuando sí hay límites.
+Se mantuvieron las mismas versiones, scripts y datos a excepción de la librería que hace operaciones matriciales.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{../results/computer_2_openblas/tiempos_i_openblas_vs_accelerate.png}
-    \caption{Inciso (i) en el computador 2: experimento original (izquierda) y
-    repetición con el límite de threads efectivo (derecha).}
+    \caption{Inciso (i) en el computador 2: experimento original y
+    repetición con ambiente nuevo.}
     \label{fig:anexo-i}
 \end{figure}
 
-Con el límite efectivo, la fila $p=1$ deja de ser plana: va de 11.47~s con
-$t=1$ a 4.33~s con $t=10$, y por primera vez se dispone de una medición
-realmente secuencial. La mejor combinación fue $(9,1)$ con 2.644~s, casi
-empatada con $(8,1)$ y $(10,1)$: repartir el trabajo en procesos rinde más que
-repartirlo en threads, y respecto de la ejecución secuencial el speedup real
-es $11.47/2.64\approx4.3$. Al forzar combinaciones con $p\,t>10$ aparece la
-oversubscription: $(10,10)$ tardó 132.8~s, 50 veces más que la mejor
-combinación (Figura~\ref{fig:anexo-oversub}).
+Viendo la comparativa podemos darnos cuenta de que en la corrida con Accelerate el límite de threads nunca llega a la librería,
+por lo que dentro de una misma fila (mismo $p$, distinto $t$) los tiempos son prácticamente iguales; lo único que cambia los tiempos es $p$.
+En contraste, en la corrida con conda que usa OpenBLAS sí se pueden apreciar diferencias al variar los threads dentro de un proceso.
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.85\textwidth]{../results/computer_2_openblas/oversubscription_openblas.png}
-    \caption{Oversubscription provocada en el computador 2 con combinaciones
-    $p\,t>10$. Eje vertical en escala logarítmica.}
-    \label{fig:anexo-oversub}
-\end{figure}
+Con la limitación efectiva, para $p = 1$ hay variaciones desde $11.47$ hasta $4.33$ s, viendo que en el caso de un solo proceso
+múltiples threads mejoran los tiempos. Sin embargo, lo más interesante que nos ofrece esta tabla es que, si nos fijamos en combinaciones
+que usan la misma cantidad de núcleos ($p \cdot t$ igual), siempre gana la que tiene más procesos: con 10 núcleos, $(1,10)$ tarda 4.33 s,
+$(2,5)$ 4.04 s, $(5,2)$ 2.96 s y $(10,1)$ 2.84 s. Así llegamos a que la mejor combinación es $(9,1)$, casi empatada con $(8,1)$ y $(10,1)$,
+lo que nos da a entender que repartir los trabajos entre procesos es más efectivo que entre threads. Este gráfico reafirma lo encontrado
+para el computador 2 con el experimento original (mejor combinación $(10,1)$, ver la comparación del inciso (j)), esta vez con un límite
+de threads que sí es efectivo; no es comparable con el $(3,2)$ del inciso (i), que corresponde al computador 1.
 
 \section*{(j) Comparación entre computadores}
 
@@ -570,9 +563,9 @@ Esto ya nos da una pista de la diferencia intrínseca entre un M5 y un M1 sin pa
 \end{table}
 
 Luego de eso, dentro de la comparativa posible (8 procesos), se ve que el computador 2 siempre es mejor que el 1,
-como se puede observar en la línea naranja; además, no solo es menor sino que más estable, lo que puede significar
+como se puede observar en la línea naranja, además, no solo es menor sino que más estable, lo que puede significar
 que el primer computador sufrió problemas de variabilidad durante los experimentos que el segundo computador pudo normalizar.
-Cabe destacar que en el computador 2 nunca empeora en tiempo al aumentar procesos mientras que en el 1 si, esta diferencia es
+Cabe destacar que en el computador 2 nunca empeora en tiempo al aumentar procesos mientras que en el 1 sí; esta diferencia es
 probablemente debido al uso eficiente de memoria y como veremos más adelante, un overhead menor por cada proceso agregado.
 
 \begin{figure}[H]
@@ -647,15 +640,10 @@ lo que nos hace pensar que los cores de eficiencia del 1 son más lentos que los
 \subsection*{Combinación de procesos y threads (i)}
 
 El análisis comparativo de esta sección es un poco complejo: debido a la naturaleza de los Mac, NumPy utiliza Accelerate como librería para
-calcular operaciones matriciales en Apple, y threadpoolctl no detecta nativamente esto, por lo que no era verificable el número de threads efectivos internos.
-Sin embargo, el experimento sí nos dio conclusiones interesantes para analizar.
-
-Lo mencionado anteriormente es visible en que en cada fila los valores son muy similares entre sí, cuando lógicamente no deberían. Esto se debe a que
-el límite de threads que le pedimos al programa nunca llegó a Accelerate, threadpoolctl solo sabe controlar librerías como OpenBLAS o MKL, y como
-no ve a Accelerate, la orden de usa solo t threads se aplica a una lista vacía, es decir, a nadie. Accelerate sigue usando la cantidad de threads
-que decide por su cuenta sin importar el t que pidamos, por lo que el t de nuestras tablas es solo el valor solicitado y no el efectivo, por eso hay filas que no siguen
-tendencias claras. La decisión de mantener el script así fue por razones comparativas, se realizó un nuevo análisis de la mejor combinación con un script que utiliza un NumPy diferente, sin ambargo
-ese no es utilizable para la comparación.
+calcular operaciones matriciales, y threadpoolctl no detecta nativamente esto, por lo que no era verificable el número de threads efectivos internos
+(ver subanexo del inciso (i)). Por eso en cada fila los valores son muy similares entre sí y el $t$ de nuestras tablas es solo el valor solicitado
+y no el efectivo; lo que sí se puede comparar entre computadores es $p$. La decisión de mantener el script así fue por razones comparativas;
+el análisis con un NumPy diferente está en el subanexo de (i) y no es utilizable para la comparación.
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{../results/comparacion/comparacion_i.png}
@@ -672,7 +660,11 @@ A su vez, concluimos que el software es también un factor limitante: por más q
 la potencia sino en la lógica de los algoritmos.
 
 \section*{Declaración de uso de Inteligencia Artificial}
-Se utilizó OpenAI Codex y claude como apoyo, particularmente en: Redacción de código en python (generación y debug), formulación de tablas y elementos Latex para el informe, 
-sin embargo todo lo escrito y el análisis del informe fue escrito y validado por los integrantes del grupo, y no se utilizó para generar ideas ni análisis de los resultados.
+Se utilizó OpenAI Codex y Claude como apoyo, particularmente en redacción de código en Python (generación y debug), formulación de tablas y elementos \LaTeX{} para el informe; sin embargo, todo lo escrito y el análisis del informe fue escrito y validado por los integrantes del grupo, y no se utilizó para generar ideas ni análisis de los resultados.
+
+\begin{thebibliography}{9}
+\bibitem{apple-blas} Apple Inc. \textit{Accelerate: BLAS}. Documentación para desarrolladores de Apple. \url{https://developer.apple.com/documentation/accelerate/blas}. Consultado el 24 de septiembre de 2026.
+\bibitem{openblas-faq} OpenMathLib. \textit{OpenBLAS: Frequently Asked Questions}. \url{https://github.com/OpenMathLib/OpenBLAS/wiki/Faq}. Consultado el 24 de septiembre de 2026.
+\end{thebibliography}
 
 \end{document}
