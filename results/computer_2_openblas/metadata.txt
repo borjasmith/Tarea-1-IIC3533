@@ -1,0 +1,13 @@
+sistema=macOS-26.6.2-arm64-arm-64bit
+chip=Apple M5
+cores_logicos=10
+python=3.9.23
+numpy=2.0.2
+blas_backend=openblas 0.3.34 (conda-forge, threading_layer=openmp)
+entorno=conda (miniforge), .conda-openblas
+threadpool_info_default=[{"user_api": "blas", "internal_api": "openblas", "num_threads": 10, "prefix": "libopenblas", "filepath": "/Users/joseignaciosalas/personal/Tarea-1-IIC3533/.conda-openblas/lib/libopenblas.0.dylib", "version": "0.3.34", "threading_layer": "openmp", "architecture": "VORTEX"}, {"user_api": "openmp", "internal_api": "openmp", "num_threads": 10, "prefix": "libomp", "filepath": "/Users/joseignaciosalas/personal/Tarea-1-IIC3533/.conda-openblas/lib/libomp.dylib", "version": null}]
+p_max=10
+repeticiones_i=5
+N=100000
+k=300
+B=48
