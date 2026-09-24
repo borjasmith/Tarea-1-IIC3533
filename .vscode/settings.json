@@ -1,0 +1,20 @@
+{
+  // Compilación del informe con Tectonic (instalado vía Homebrew); no requiere TeX Live.
+  "latex-workshop.latex.tools": [
+    {
+      "name": "tectonic",
+      "command": "tectonic",
+      "args": ["--synctex", "--keep-logs", "%DOC_EXT%"]
+    }
+  ],
+  "latex-workshop.latex.recipes": [
+    { "name": "Tectonic", "tools": ["tectonic"] }
+  ],
+  "latex-workshop.latex.recipe.default": "first",
+  "latex-workshop.latex.autoBuild.run": "onSave",
+  "latex-workshop.view.pdf.viewer": "tab",
+  "latex-workshop.latex.outDir": "%DIR%",
+  "latex-workshop.latex.rootFile.useSubFile": false,
+  "latex-workshop.latex.rootFile.doNotPrompt": true,
+  "latex-workshop.latex.clean.fileTypes": ["*.aux", "*.log", "*.synctex.gz", "*.fls", "*.fdb_latexmk"]
+}
