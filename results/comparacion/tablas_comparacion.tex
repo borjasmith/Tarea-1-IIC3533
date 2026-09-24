@@ -1,0 +1,95 @@
+% Tablas comparativas para el inciso (j). Generadas por results/comparacion/generar_comparacion.py
+
+\begin{table}[h]
+    \centering
+    \small
+    \begin{tabular}{|l|l|l|}
+    \hline
+    \textbf{Característica} & \textbf{Computador 1} & \textbf{Computador 2} \\
+    \hline
+    Chip & Apple M1 & Apple M5 \\
+    Cores de rendimiento / eficiencia & 4 / 4 & 4 / 6 \\
+    Cores lógicos ($p_{\max}$) & 8 & 10 \\
+    Memoria RAM & 8 GB & 24 GB \\
+    Sistema operativo & macOS 14.7.8 (arm64) & macOS 26.6.2 (arm64) \\
+    Python / NumPy / scikit-learn / joblib & 3.9.6 / 2.0.2 / 1.6.1 / 1.5.3 & 3.9.6 / 2.0.2 / 1.6.1 / 1.5.3 \\
+    Backend BLAS & Apple Accelerate & Apple Accelerate \\
+    Repeticiones por configuración & 3 & 5 \\
+    Combinaciones $(p,t)$ en (i) & 20 & 27 \\
+    \hline
+    \end{tabular}
+    \caption{Características de los dos computadores. El software es idéntico; solo cambia el hardware.}
+    \label{tab:hardware-j}
+\end{table}
+
+\begin{table}[h]
+    \centering
+    \scriptsize
+    \begin{tabular}{|c|rr|rr|rr|}
+    \hline
+     & \multicolumn{2}{c|}{\textbf{BaggingRegressor}} & \multicolumn{2}{c|}{\textbf{sklearn + joblib}} & \multicolumn{2}{c|}{\textbf{NumPy + joblib}} \\
+    $p$ & C1 & C2 & C1 & C2 & C1 & C2 \\
+    \hline
+    1 & 86.843 & 30.321 & 84.737 & 29.145 & 6.017 & 2.484 \\
+    2 & 56.377 & 22.168 & 60.699 & 22.877 & 5.029 & 1.972 \\
+    3 & 50.298 & 19.133 & 55.099 & 19.400 & 4.232 & 1.932 \\
+    4 & 56.254 & 16.898 & 55.999 & 16.563 & 5.497 & 1.861 \\
+    5 & 46.518 & 17.754 & 59.245 & 17.506 & 4.357 & 1.683 \\
+    6 & 62.251 & 16.451 & 72.303 & 16.562 & 5.479 & 1.614 \\
+    7 & 64.378 & 15.983 & 114.517 & 16.138 & 5.039 & 1.666 \\
+    8 & 73.594 & 16.083 & 127.574 & 16.074 & 4.288 & 1.639 \\
+    9 & -- & 16.565 & -- & 16.637 & -- & 1.654 \\
+    10 & -- & 16.223 & -- & 16.439 & -- & 1.590 \\
+    \hline
+    \end{tabular}
+    \caption{Tiempo mediano $T(p)$ en segundos en ambos computadores (C1: M1, C2: M5). El computador 1 llega hasta $p=8$.}
+    \label{tab:tiempos-j}
+\end{table}
+
+\begin{table}[h]
+    \centering
+    \scriptsize
+    \begin{tabular}{|l|rrrrr|rrrrr|}
+    \hline
+     & \multicolumn{5}{c|}{\textbf{Computador 1 (M1)}} & \multicolumn{5}{c|}{\textbf{Computador 2 (M5)}} \\
+    \textbf{Implementación} & $T(1)$ & $S_{\max}$ & $E$ en $S_{\max}$ & $S(8)$ & $T_o(8)$ & $T(1)$ & $S_{\max}$ & $E$ en $S_{\max}$ & $S(8)$ & $T_o(8)$ \\
+    \hline
+    BaggingRegressor & 86.84 & 1.867 ($p=5$) & 0.373 & 1.180 & 501.9 & 30.32 & 1.897 ($p=7$) & 0.271 & 1.885 & 98.3 \\
+    sklearn + joblib & 84.74 & 1.538 ($p=3$) & 0.513 & 0.664 & 935.9 & 29.15 & 1.813 ($p=8$) & 0.227 & 1.813 & 99.4 \\
+    NumPy + joblib & 6.02 & 1.422 ($p=3$) & 0.474 & 1.403 & 28.3 & 2.48 & 1.563 ($p=10$) & 0.156 & 1.515 & 10.6 \\
+    \hline
+    \end{tabular}
+    \caption{Resumen de escalabilidad por computador. $T(1)$ y $T_o(8)$ en segundos; $S(8)$ permite comparar ambos equipos con el mismo número de procesos.}
+    \label{tab:resumen-j}
+\end{table}
+
+\begin{table}[h]
+    \centering
+    \small
+    \begin{tabular}{|l|r|r|r|r|}
+    \hline
+    \textbf{Implementación} & $p=1$ & $p=2$ & $p=4$ & $p=8$ \\
+    \hline
+    BaggingRegressor & 2.86 & 2.54 & 3.33 & 4.58 \\
+    sklearn + joblib & 2.91 & 2.65 & 3.38 & 7.94 \\
+    NumPy + joblib & 2.42 & 2.55 & 2.95 & 2.62 \\
+    \hline
+    \end{tabular}
+    \caption{Razón $T_1(p)/T_2(p)$: cuántas veces más rápido es el computador 2 que el computador 1 para el mismo $p$.}
+    \label{tab:razon-j}
+\end{table}
+
+\begin{table}[h]
+    \centering
+    \small
+    \begin{tabular}{|l|c|r|r|r|}
+    \hline
+    \textbf{Computador} & \textbf{Mejor $(p,t)$} & \textbf{Tiempo [s]} & \textbf{$(1,1)$ [s]} & \textbf{Rango fila $p=1$ [s]} \\
+    \hline
+    Computador 1 (M1, 8 cores, 8 GB) & $(3,2)$ & 4.068 & 5.580 & 5.181--6.013 \\
+    Computador 2 (M5, 10 cores, 24 GB) & $(10,1)$ & 1.637 & 2.533 & 2.518--2.534 \\
+    \hline
+    \end{tabular}
+    \caption{Mejor combinación del inciso (i) en cada computador. La última columna muestra cuánto varía el tiempo con $p=1$ al cambiar $t$; un rango estrecho indica que el límite $t$ no tuvo efecto.}
+    \label{tab:pt-j}
+\end{table}
