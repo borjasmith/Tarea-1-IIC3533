@@ -4,6 +4,7 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{graphicx}
+\usepackage{float}
 \usepackage[margin=1in]{geometry}
 \usepackage{hyperref}
 \usepackage{parskip}
@@ -462,21 +463,20 @@ por ello es la recomendada para este computador. Los 60 tiempos individuales est
 
 \section*{(j) Comparación entre computadores}
 
-% ------------------------------------------------------------------
-% GUÍA PARA REDACTAR (j). Cada bloque "ESCRIBIR AQUÍ" indica qué va en
-% ese lugar. Las tablas y figuras ya están insertadas y compilan; los
-% números salen de results/computer_1 y results/computer_2 (N = 100 000).
-% Borra estos comentarios cuando termines.
-% ------------------------------------------------------------------
+Para este inciso de comparación, se repitieron exactamente los mismos experimentos (con los mismos scripts) de los incisos f, g, h e i,
+con los mismos ambientes de Python y datos del problema, véase $N = 100\,000$, $k = 300$, $B = 48$ y también la misma semilla para los valores aleatorios,
+de modo que la comparativa refleje las diferencias en hardware y un análisis de computación. Algo importante a destacar es que se decidió
+que el computador 1 usara 3 repeticiones por configuración, a diferencia del computador 2, que usó 5; en ambos se usa la mediana. Esta
+decisión es parte de la argumentación del contraste de computadores.
 
-% ESCRIBIR AQUÍ (1): párrafo de apertura. Decir que se repitieron f, g, h e i
-% en dos computadores con el mismo problema (N = 100 000, k = 300, B = 48,
-% misma semilla) y el mismo software, de modo que las diferencias se deben
-% solo al hardware. Mencionar que el computador 1 usó 3 repeticiones por
-% configuración y el computador 2 usó 5, y que en ambos se reporta la mediana.
-% Referenciar la Tabla~\ref{tab:hardware-j}.
+Inicialmente, en términos de hardware, la primera diferencia observada es que el computador 2 posee más
+núcleos o cores (10 vs 8) y sus respectivas divisiones entre cores lógicos y de eficiencia, destacando que ambos tienen
+la misma cantidad de cores de rendimiento; muy importante también mencionar que en los algoritmos cambia el $p$ (cantidad máxima de procesos).
+Luego se aprecia la diferencia de memoria RAM,
+siendo 24 GB el computador 2 contra 8 GB, y finalmente la generación de chips, M5 vs M1. Dentro del software de Mac
+se tiene la ``misma'' lógica; veremos que los comportamientos de los \textit{schedulers} y librerías internas juegan un papel importante.
 
-\begin{table}[h]
+\begin{table}[H]
     \centering
     \small
     \begin{tabular}{|l|l|l|}
@@ -485,27 +485,29 @@ por ello es la recomendada para este computador. Los 60 tiempos individuales est
     \hline
     Chip & Apple M1 & Apple M5 \\
     Cores de rendimiento / eficiencia & 4 / 4 & 4 / 6 \\
-    Cores lógicos ($p_{\max}$) & 8 & 10 \\
-    Memoria RAM & 8 GB & 24 GB \\
+    Cores lógicos (totales) & 8 & 10 \\
+    RAM & 8 GB & 24 GB \\
     Sistema operativo & macOS 14.7.8 (arm64) & macOS 26.6.2 (arm64) \\
-    Python / NumPy / scikit-learn / joblib & 3.9.6 / 2.0.2 / 1.6.1 / 1.5.3 & 3.9.6 / 2.0.2 / 1.6.1 / 1.5.3 \\
     Backend BLAS & Apple Accelerate & Apple Accelerate \\
     Repeticiones por configuración & 3 & 5 \\
     Combinaciones $(p,t)$ en (i) & 20 & 27 \\
     \hline
     \end{tabular}
-    \caption{Características de los dos computadores. El software es idéntico; solo cambia el hardware.}
+    \caption{Comparativa de hardware.}
     \label{tab:hardware-j}
 \end{table}
 
-% ESCRIBIR AQUÍ (2): comentar la tabla de hardware. Diferencias relevantes:
-% 2 cores lógicos más en el computador 2, pero son de eficiencia (ambos tienen
-% 4 de rendimiento); 3 veces más memoria (24 GB vs 8 GB); generación M5 vs M1.
-% Software idéntico: mismas versiones y mismo backend Accelerate.
-
 \subsection*{Tiempos de ejecución (f)}
 
-\begin{table}[h]
+La primera comparación es sobre el inciso f, la cual compara los tiempos de ejecución
+entre los 3 algoritmos. La primera comparativa que puede surgir, y que es clave, es ver cómo
+se comportan ambos computadores utilizando solo 1 proceso, es decir, ver granularmente la diferencia
+de rendimiento de la unidad básica (core), y es que el análisis parte de acá. Se puede observar
+que con solo un proceso el computador 2 es significativamente más rápido, reduciendo el tiempo del primer algoritmo
+en cerca de un $65\%$, en el siguiente un $65\%$ y finalmente un $58\%$, es decir, siendo casi 2.9 y 2.4 veces más rápido.
+Esto ya nos da una pista de la diferencia intrínseca entre un M5 y un M1 sin paralelización.
+
+\begin{table}[H]
     \centering
     \scriptsize
     \begin{tabular}{|c|rr|rr|rr|}
@@ -525,33 +527,35 @@ por ello es la recomendada para este computador. Los 60 tiempos individuales est
     10 & -- & 16.223 & -- & 16.439 & -- & 1.590 \\
     \hline
     \end{tabular}
-    \caption{Tiempo mediano $T(p)$ en segundos en ambos computadores (C1: M1, C2: M5). El computador 1 llega hasta $p=8$.}
+    \caption{Tiempo mediano en segundos.}
     \label{tab:tiempos-j}
 \end{table}
 
-\begin{figure}[h]
+Luego de eso, dentro de la comparativa posible (8 procesos), se ve que el computador 2 siempre es mejor que el 1,
+como se puede observar en la línea naranja; además, no solo es menor sino que más estable, lo que puede significar
+que el primer computador sufrió problemas de variabilidad durante los experimentos que el segundo computador pudo normalizar.
+Cabe destacar que en el computador 2 nunca empeora en tiempo al aumentar procesos mientras que en el 1 si, esta diferencia es
+probablemente debido al uso eficiente de memoria y como veremos más adelante, un overhead menor por cada proceso agregado.
+
+\begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{../results/comparacion/comparacion_tiempos.png}
-    \caption{Tiempo mediano $T(p)$ en ambos computadores, un panel por implementación. El computador 1 llega hasta $p=8$ y el computador 2 hasta $p=10$.}
+    \caption{Comparación gráfica de tiempo mediano en segundos.}
     \label{fig:tiempos-j}
 \end{figure}
 
-% ESCRIBIR AQUÍ (3): comentar la Tabla~\ref{tab:tiempos-j} y la
-% Figura~\ref{fig:tiempos-j}. Puntos clave:
-%   - Con p = 1 el computador 2 es 2.4 a 2.9 veces más rápido en las tres
-%     implementaciones (Tabla~\ref{tab:razon-j}): diferencia de generación del chip.
-%   - Ambos mejoran hasta p = 3 o 4 y luego se estancan: coincide con los 4
-%     cores de rendimiento que tienen ambos chips.
-%   - En el computador 1 las versiones scikit-learn EMPEORAN desde p = 6
-%     (sklearn + joblib: 127.6 s con p = 8, más que los 84.7 s de p = 1).
-%     En el computador 2 nunca empeoran. Causa: presión de memoria en 8 GB
-%     (cada worker crea su remuestra de ~241 MB más copias internas de sklearn).
-%   - El orden entre implementaciones se mantiene en ambos: NumPy es 12 a 14
-%     veces más rápida que las versiones scikit-learn.
-
 \subsection*{Speedup y eficiencia (g)}
 
-\begin{table}[h]
+En este inciso se compara qué tanto aumenta la velocidad al aumentar a $p$ los procesos. Al hablar de eficiencia
+podemos notar que la diferencia de procesadores (M5 y M1) inicialmente no afecta a la métrica, ya que son comparativas
+con un valor ideal: para $S(p)$ es $T(1)$ y para $E(p)$ es $S(p)$, lo que depende de cada computador de forma independiente.
+
+Como vimos en la comparativa anterior, fijándonos en tiempos brutos, véase $T(1)$, el computador 2
+es evidentemente mejor; sin embargo, lo interesante viene cuando comienza el análisis del speedup y eficiencia,
+ya que, como mencionamos, son métricas relativas: no es qué tan rápido es, sino cuánto más rápido. Debido a lo explicado,
+podemos ver que los valores de speedup máximos son muy similares.
+
+\begin{table}[H]
     \centering
     \scriptsize
     \begin{tabular}{|l|rrrrr|rrrrr|}
@@ -564,125 +568,73 @@ por ello es la recomendada para este computador. Los 60 tiempos individuales est
     NumPy + joblib & 6.02 & 1.422 ($p=3$) & 0.474 & 1.403 & 28.3 & 2.48 & 1.563 ($p=10$) & 0.156 & 1.515 & 10.6 \\
     \hline
     \end{tabular}
-    \caption{Resumen de escalabilidad por computador. $T(1)$ y $T_o(8)$ en segundos; $S(8)$ permite comparar ambos equipos con el mismo número de procesos.}
+    \caption{Resumen de speedup máximo, eficiencia en el máximo y valores con 8 procesos en cada computador.}
     \label{tab:resumen-j}
 \end{table}
 
-\begin{figure}[h]
+El análisis es más interesante cuando se ven las comparativas en el tiempo de ambos computadores. Para el speedup, volvemos a ver que
+son relativamente similares, con el computador 2 siendo un poco mejor, en gran medida gracias a la estabilidad. En ambos computadores
+se observa de igual forma que a medida que aumenta $p$ no se acerca a la curva ideal; en el computador 2 se observa que se mantiene más asintótico.
+Mientras que para la eficiencia los comportamientos son evidenciablemente más similares, con una curva que cae de casi la misma manera.
+Estos comportamientos tan similares, considerando las diferencias de hardware, nos dan a entender que el software (elemento en común) pone límites
+que no son solucionables con mejoras de los elementos del computador, sino que atacan a la lógica algorítmica y al código.
+
+
+\begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{../results/comparacion/comparacion_speedup_eficiencia.png}
-    \caption{Speedup $S(p)$ (arriba) y eficiencia $E(p)$ (abajo) en ambos computadores. La línea discontinua es la curva ideal.}
+    \caption{Speedup $S(p)$ (arriba) y eficiencia $E(p)$ (abajo) en ambos computadores.}
     \label{fig:speedup-j}
 \end{figure}
 
-% ESCRIBIR AQUÍ (4): comentar la Tabla~\ref{tab:resumen-j} y la
-% Figura~\ref{fig:speedup-j}. Puntos clave:
-%   - Los speedups máximos son parecidos (1.87 vs 1.90 en Bagging), pero el
-%     computador 1 los alcanza con menos procesos (p = 3 a 5) y luego cae; el
-%     computador 2 se mantiene en una meseta hasta p = 10.
-%   - sklearn + joblib en el computador 1 tiene S(8) = 0.66: con 8 procesos es
-%     más lento que con 1. En el computador 2, S(8) = 1.81.
-%   - NumPy: mejor p = 3 en el computador 1 vs p = 10 en el computador 2, misma
-%     causa (memoria). Ninguno pasa de S = 2 con hasta 10 cores.
-%   - Eficiencias similares hasta p = 4; después el computador 1 cae más rápido.
-%   - Explicación común a ambos de por qué S < 2: Accelerate ya usa varios
-%     threads con p = 1 (se observaron procesos al ~280 % de CPU en el
-%     computador 2), así que T(1) no es realmente secuencial y al agregar
-%     procesos se produce oversubscription.
-
-\begin{table}[h]
-    \centering
-    \small
-    \begin{tabular}{|l|r|r|r|r|}
-    \hline
-    \textbf{Implementación} & $p=1$ & $p=2$ & $p=4$ & $p=8$ \\
-    \hline
-    BaggingRegressor & 2.86 & 2.54 & 3.33 & 4.58 \\
-    sklearn + joblib & 2.91 & 2.65 & 3.38 & 7.94 \\
-    NumPy + joblib & 2.42 & 2.55 & 2.95 & 2.62 \\
-    \hline
-    \end{tabular}
-    \caption{Razón $T_1(p)/T_2(p)$: cuántas veces más rápido es el computador 2 que el computador 1 para el mismo $p$.}
-    \label{tab:razon-j}
-\end{table}
-
-% ESCRIBIR AQUÍ (5): comentar la Tabla~\ref{tab:razon-j}. La ventaja del
-% computador 2 crece con p: de ~2.9x con p = 1 a 4.6x (Bagging) y 7.9x
-% (sklearn) con p = 8. Con p = 1 la razón mide el chip; el crecimiento con p
-% mide la memoria (el computador 1 se degrada, el 2 no). En NumPy la razón se
-% mantiene entre 2.2x y 3.4x porque su huella de memoria es menor.
-
 \subsection*{Overhead (h)}
 
-\begin{figure}[h]
+Esta sección compara el inciso h, el cual calcula el tiempo empleado en lo que no es directamente la resolución del algoritmo, véase el overhead, que se
+calcula como se mencionó en el mismo inciso. En este caso la primera noción es ver que en los gráficos la línea del
+computador 1 es mucho más pronunciada que la del computador 2. Esto se interpreta como que el computador 1 acumula mucho más overhead al
+añadir un proceso que el computador 2, lo cual además se ve casi exponencial, mientras que para el computador 2 es más lineal. Si bien, al ser ambos Mac,
+hay procesos que siguen siendo iguales, la diferencia de memoria juega un rol fundamental: probablemente el computador 1 tiene mucho overhead
+de cores esperando memoria que ya está colapsada, mientras que el computador 2 tiene más holgura. De hecho, un análisis interesante es que el computador 1
+empieza a tener comportamientos erráticos a partir de $p = 4$, donde se acaban los cores de rendimiento (rápidos) y se empieza a delegar a los de eficiencia (más lentos),
+lo que nos hace pensar que los cores de eficiencia del 1 son más lentos que los del computador 2 (recordemos que tienen la misma cantidad de cores rápidos).
+
+
+\begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{../results/comparacion/comparacion_overhead.png}
     \caption{Overhead total $T_o(p)=pT(p)-T(1)$ en ambos computadores.}
     \label{fig:overhead-j}
 \end{figure}
 
-% ESCRIBIR AQUÍ (6): comentar la Figura~\ref{fig:overhead-j}. Puntos clave:
-%   - En ambos el overhead crece con p, pero la pendiente es muy distinta:
-%     en el computador 2 cada proceso extra suma ~13 a 15 s (scikit-learn) y
-%     ~1.4 s (NumPy); en el computador 1 suma entre 60 y 120 s.
-%   - Con p = 8: 502 / 936 / 28 s en el computador 1 vs 98 / 99 / 11 s en el 2.
-%   - El salto de sklearn + joblib en p = 7 y 8 del computador 1 (717 y 936 s)
-%     es la firma de la presión de memoria: no es overhead de joblib sino
-%     procesos que corren mucho más lento por intercambio a disco.
-%   - Fuentes comunes: arranque de intérpretes, memmap de X, remuestras de
-%     241 MB por tarea, threads BLAS compitiendo por cores, cores de eficiencia.
-
 \subsection*{Combinación de procesos y threads (i)}
 
-\begin{table}[h]
-    \centering
-    \small
-    \begin{tabular}{|l|c|r|r|r|}
-    \hline
-    \textbf{Computador} & \textbf{Mejor $(p,t)$} & \textbf{Tiempo [s]} & \textbf{$(1,1)$ [s]} & \textbf{Rango fila $p=1$ [s]} \\
-    \hline
-    Computador 1 (M1, 8 cores, 8 GB) & $(3,2)$ & 4.068 & 5.580 & 5.181--6.013 \\
-    Computador 2 (M5, 10 cores, 24 GB) & $(10,1)$ & 1.637 & 2.533 & 2.518--2.534 \\
-    \hline
-    \end{tabular}
-    \caption{Mejor combinación del inciso (i) en cada computador. La última columna muestra cuánto varía el tiempo con $p=1$ al cambiar $t$; un rango estrecho indica que el límite $t$ no tuvo efecto.}
-    \label{tab:pt-j}
-\end{table}
+El análisis comparativo de esta sección es un poco complejo: debido a la naturaleza de los Mac, NumPy utiliza Accelerate como librería para
+calcular operaciones matriciales en Apple, y threadpoolctl no detecta nativamente esto, por lo que no era verificable el número de threads efectivos internos.
+Sin embargo, el experimento sí nos dio conclusiones interesantes para analizar.
 
-\begin{figure}[h]
+Lo mencionado anteriormente es visible en que en cada fila los valores son muy similares entre sí, cuando lógicamente no deberían. Esto se debe a que
+el límite de threads que le pedimos al programa nunca llegó a Accelerate, threadpoolctl solo sabe controlar librerías como OpenBLAS o MKL, y como
+no ve a Accelerate, la orden de usa solo t threads se aplica a una lista vacía, es decir, a nadie. Accelerate sigue usando la cantidad de threads
+que decide por su cuenta sin importar el t que pidamos, por lo que el t de nuestras tablas es solo el valor solicitado y no el efectivo, por eso hay filas que no siguen
+tendencias claras. La decisión de mantener el script así fue por razones comparativas, se realizó un nuevo análisis de la mejor combinación con un script que utiliza un NumPy diferente, sin ambargo
+ese no es utilizable para la comparación.
+\begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{../results/comparacion/comparacion_i.png}
-    \caption{Tiempo mediano de la versión NumPy para cada combinación $(p,t)$ con $p\,t\leq p_{\mathrm{max}}$. La celda destacada es la mejor de cada computador.}
+    \caption{Tiempo mediano de la versión NumPy para cada combinación; en naranjo, el más rápido.}
     \label{fig:pt-j}
 \end{figure}
 
-% ESCRIBIR AQUÍ (7): comentar la Tabla~\ref{tab:pt-j} y la Figura~\ref{fig:pt-j}.
-%   - Mejor combinación opuesta: (3,2) con 4.07 s en el computador 1 vs (10,1)
-%     con 1.64 s en el computador 2. En el 1, más procesos cuestan memoria; en
-%     el 2 salen casi gratis.
-%   - En el computador 2 la fila p = 1 es plana (2.518 a 2.534 s para todo t):
-%     el límite t no tuvo efecto porque threadpoolctl no controla Accelerate.
-%     En el computador 1 la fila varía (5.18 a 6.01 s) pero sin tendencia con
-%     t, lo que se atribuye a ruido con 3 repeticiones, no a un efecto real.
-%   - En ambos, threadpool_info() devolvió una lista vacía: la limitación de
-%     Accelerate es común a los dos equipos y no un accidente de uno.
-
 \subsection*{Síntesis}
 
-% ESCRIBIR AQUÍ (8): cerrar con las 3 diferencias más notables y su causa:
-%   1. Velocidad absoluta (~3x con p = 1): generación del chip (M5 vs M1).
-%   2. Degradación con p alto solo en el computador 1: memoria de 8 GB frente
-%      a remuestras de 241 MB por proceso; el computador 2 con 24 GB no la sufre.
-%      Es la diferencia más importante y cambia la configuración óptima.
-%   3. Los 2 cores adicionales del computador 2 casi no aportan: son de
-%      eficiencia, y ambos chips tienen los mismos 4 cores de rendimiento.
-% Y lo que NO cambió entre computadores: orden de las implementaciones, meseta
-% cerca de p = 4, speedup máximo < 2, threadpoolctl ciego ante Accelerate.
-
+Estos experimentos nos ayudaron a llegar a múltiples conclusiones, comenzando desde la demostración de la diferencia entre
+2 computadores con hardware diferente: cómo las generaciones de computadores (particularmente en una comparativa de la misma marca) han avanzado y mejorado
+a través de los años, y cómo la arquitectura de los chips, los aumentos de memoria y la cantidad de cores lógicos afectan directamente a velocidades y rendimiento en computación.
+A su vez, concluimos que el software es también un factor limitante: por más que se mejore el computador, hay límites lógicos muy interesantes de analizar, donde la velocidad ya no radica en
+la potencia sino en la lógica de los algoritmos.
 
 \section*{Declaración de uso de Inteligencia Artificial}
-Se utilizó OpenAI Codex como apoyo para revisar y optimizar el código, diseñar
-los experimentos y redactar el informe. Los integrantes del grupo revisaron el
-código y validaron experimentalmente los resultados presentados.
+Se utilizó OpenAI Codex y claude como apoyo, particularmente en: Redacción de código en python (generación y debug), formulación de tablas y elementos Latex para el informe, 
+sin embargo todo lo escrito y el análisis del informe fue escrito y validado por los integrantes del grupo, y no se utilizó para generar ideas ni análisis de los resultados.
 
 \end{document}
