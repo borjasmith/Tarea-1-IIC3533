@@ -264,107 +264,6 @@ Python. Las observaciones completas quedaron almacenadas en
 \texttt{results/computer\_1/observations\_e.csv}.
 
 
-\subsection*{Anexo (e): repetición en el computador 2 con OpenBLAS}
-
-Como se explicó arriba, con el NumPy instalado mediante \texttt{pip} en macOS el
-backend BLAS es Apple Accelerate y \texttt{threadpool\_info()} devuelve una lista
-vacía, por lo que en ninguno de los dos computadores fue posible observar ni
-limitar los threads internos que pide este inciso. Para poder responder esa
-parte del enunciado, en el computador 2 se repitió el experimento en un
-ambiente conda (miniforge, canal conda-forge), que es la configuración
-recomendada por el enunciado. En ese ambiente NumPy queda enlazado a OpenBLAS,
-que \texttt{threadpoolctl} sí reconoce. Se mantuvieron las mismas versiones
-(Python 3.9, NumPy 2.0.2, scikit-learn 1.6.1, joblib 1.5.3, threadpoolctl
-3.6.0), los mismos scripts y los mismos datos; la única diferencia respecto del
-experimento original es la librería BLAS. Este anexo no entra en la comparación
-del inciso (j) porque el computador 1 no lo ejecutó. Los archivos están en
-\texttt{results/computer\_2\_openblas/}.
-
-\begin{table}[H]
-    \centering
-    \small
-    \begin{tabular}{|c|c|c|c|c|}
-    \hline
-    $p$ & \textbf{Workers} & \textbf{Threads OpenBLAS por worker} & \textbf{Threads totales} & \textbf{Tiempo mediano [s]} \\
-    \hline
-    1 & 1 & 10 & 10 & 4.368 \\
-    2 & 2 & 5 & 10 & 4.212 \\
-    4 & 4 & 2 & 8 & 3.321 \\
-    8 & 8 & 1 & 8 & 2.714 \\
-    10 & 10 & 1 & 10 & 2.517 \\
-    \hline
-    \end{tabular}
-    \caption{Anexo (e), computador 2 con OpenBLAS: \texttt{threadpool\_info()} dentro de cada worker sí reporta el pool y su número de threads. Sin límite, cada proceso abre 10 threads.}
-    \label{tab:anexo-e-openblas}
-\end{table}
-
-La Tabla~\ref{tab:anexo-e-openblas} muestra lo que antes no se podía ver: cada
-worker reporta un pool OpenBLAS y, sin que nosotros fijemos ningún límite, el
-número de threads por worker es 10, 5, 2, 1 y 1 para $p=1,2,4,8,10$. Esto no es
-casualidad: el backend \texttt{loky} de joblib fija por defecto en cada worker
-las variables de entorno \texttt{OPENBLAS\_NUM\_THREADS},
-\texttt{OMP\_NUM\_THREADS}, \texttt{MKL\_NUM\_THREADS} y
-\texttt{VECLIB\_MAXIMUM\_THREADS} al valor
-$\max(\lfloor p_{\max}/p\rfloor, 1)$, de modo que el total de threads BLAS sea
-aproximadamente $p_{\max}$ para cualquier $p$. Es decir, joblib evita la
-oversubscription por diseño, y lo hace tanto para OpenBLAS como para Accelerate
-(la variable \texttt{VECLIB\_MAXIMUM\_THREADS} es la que Accelerate obedece).
-
-Esto permite reinterpretar las observaciones hechas con Accelerate. En el
-computador 2, durante el inciso (f) se observaron procesos al $\sim$280\,\% de
-CPU con $p=3$, lo que coincide con $\lfloor 10/3\rfloor=3$ threads por worker;
-en el computador 1, los workers al 53--66\,\% de CPU con $p=8$ coinciden con
-$\lfloor 8/8\rfloor=1$ thread cada uno. Con $p=1$ joblib no crea workers y el
-cálculo corre en el proceso principal, donde Accelerate usa todos los núcleos.
-En consecuencia, en el experimento original el valor efectivo de $t$ no era
-desconocido sino $\lfloor p_{\max}/p\rfloor$, y la degradación observada en el
-computador 1 al pasar de $p=4$ a $p=8$ no se explica por oversubscription de
-threads, sino por la presión de memoria de mantener ocho remuestras de
-$\sim$241~MB en 8~GB de RAM.
-
-Para mostrar qué ocurre cuando la oversubscription sí existe, se forzó el
-límite dentro de cada tarea con \texttt{threadpool\_limits(limits=t)} en
-combinaciones con $p\,t>p_{\max}$, lo que anula la protección de joblib.
-
-\begin{table}[H]
-    \centering
-    \small
-    \begin{tabular}{|c|c|r|r|}
-    \hline
-    \textbf{$(p,t)$} & \textbf{Threads totales $p\,t$} & \textbf{Mediana [s]} & \textbf{Veces más lento que la mejor} \\
-    \hline
-    $(9,1)$ & 9 & 2.644 & 1.0 \\
-    $(2,10)$ & 20 & 37.493 & 14.2 \\
-    $(4,5)$ & 20 & 18.018 & 6.8 \\
-    $(5,10)$ & 50 & 125.618 & 47.5 \\
-    $(10,5)$ & 50 & 57.247 & 21.7 \\
-    $(10,10)$ & 100 & 132.847 & 50.3 \\
-    \hline
-    \end{tabular}
-    \caption{Oversubscription provocada en el computador 2 con OpenBLAS: combinaciones con $p\,t>10$ frente a la mejor combinación válida.}
-    \label{tab:anexo-oversub}
-\end{table}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.9\textwidth]{../results/computer_2_openblas/oversubscription_openblas.png}
-    \caption{Oversubscription provocada en el computador 2 con OpenBLAS. Eje
-    vertical en escala logarítmica.}
-    \label{fig:anexo-oversub}
-\end{figure}
-
-El efecto es severo: con 20 threads sobre 10 núcleos el tiempo se multiplica
-por 7 a 14, y con 50 o 100 threads por 22 a 50. Con 100 threads (10 procesos
-con 10 threads cada uno) el bootstrap tardó 132.8~s frente a 2.6~s de la mejor
-combinación válida. La causa es que los threads de OpenBLAS con capa OpenMP
-esperan activamente (\textit{busy-wait}) a sus compañeros; cuando hay muchos
-más threads que núcleos, la mayor parte del tiempo de CPU se gasta en esperas
-y cambios de contexto, no en aritmética. La corrección es justamente la que
-aplica joblib por defecto: mantener $p\,t\leq p_{\max}$, ya sea con
-\texttt{inner\_max\_num\_threads} en \texttt{Parallel}, con
-\texttt{threadpool\_limits} dentro de la tarea o con las variables de entorno
-antes de iniciar Python.
-
 \section*{(f) Tiempos de ejecución en función de p}
 
 El primer computador posee $p_{\max}=8$ cores lógicos. Comparamos las
@@ -564,104 +463,41 @@ por ello es la recomendada para este computador. Los 60 tiempos individuales est
 \texttt{results/computer\_1/timings\_i.csv}.
 
 
-\subsection*{Anexo (i): control efectivo de $t$ en el computador 2 con OpenBLAS}
+\subsection*{Anexo: control efectivo de $t$ en el computador 2}
 
-Con el mismo ambiente conda del anexo de (e), se repitieron las 27 combinaciones
-$(p,t)$ con $p\,t\leq10$ del computador 2, cinco veces cada una en un
-intérprete nuevo. Aquí \texttt{threadpool\_limits(limits=t)} sí actúa sobre
-OpenBLAS, por lo que $t$ pasa de ser un valor solicitado a un valor efectivo,
-verificable con \texttt{threadpool\_info()} en cada corrida.
+En los dos computadores el límite de threads no tuvo efecto real, porque la
+librería de álgebra lineal que usa el NumPy de \texttt{pip} en macOS (Accelerate)
+no es controlable con \texttt{threadpoolctl}. Para verificar que el
+experimento funciona cuando el límite sí se aplica, en el computador 2 se
+repitió (i) en un ambiente conda, como recomienda el enunciado, donde NumPy
+queda enlazado a OpenBLAS. Se mantuvieron las mismas versiones, scripts y
+datos; solo cambió la librería de álgebra lineal. Los resultados están en
+\texttt{results/computer\_2\_openblas/}.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{../results/computer_2_openblas/tiempos_i_openblas_vs_accelerate.png}
-    \caption{Inciso (i) en el computador 2 con ambos backends. A la izquierda,
-    el experimento original con Accelerate; a la derecha, la repetición con
-    OpenBLAS. La celda destacada es la mejor combinación de cada caso.}
+    \caption{Inciso (i) en el computador 2: experimento original (izquierda) y
+    repetición con el límite de threads efectivo (derecha).}
     \label{fig:anexo-i}
 \end{figure}
 
-\begin{table}[H]
+Con el límite efectivo, la fila $p=1$ deja de ser plana: va de 11.47~s con
+$t=1$ a 4.33~s con $t=10$, y por primera vez se dispone de una medición
+realmente secuencial. La mejor combinación fue $(9,1)$ con 2.644~s, casi
+empatada con $(8,1)$ y $(10,1)$: repartir el trabajo en procesos rinde más que
+repartirlo en threads, y respecto de la ejecución secuencial el speedup real
+es $11.47/2.64\approx4.3$. Al forzar combinaciones con $p\,t>10$ aparece la
+oversubscription: $(10,10)$ tardó 132.8~s, 50 veces más que la mejor
+combinación (Figura~\ref{fig:anexo-oversub}).
+
+\begin{figure}[H]
     \centering
-    \small
-    \begin{tabular}{|c|r|r|}
-    \hline
-    \textbf{$(p,t)$} & \textbf{Accelerate [s]} & \textbf{OpenBLAS [s]} \\
-    \hline
-    $(1,1)$ & 2.533 & 11.470 \\
-    $(1,2)$ & 2.520 & 7.009 \\
-    $(1,3)$ & 2.532 & 6.020 \\
-    $(1,4)$ & 2.534 & 5.095 \\
-    $(1,5)$ & 2.520 & 5.458 \\
-    $(1,6)$ & 2.521 & 5.300 \\
-    $(1,7)$ & 2.519 & 4.918 \\
-    $(1,8)$ & 2.522 & 4.663 \\
-    $(1,9)$ & 2.532 & 4.591 \\
-    $(1,10)$ & 2.518 & 4.328 \\
-    \hline
-    \end{tabular}
-    \caption{Fila $p=1$ del inciso (i) en el computador 2 con ambos backends. Con Accelerate el tiempo no depende de $t$; con OpenBLAS sí.}
-    \label{tab:anexo-i-p1}
-\end{table}
-
-La diferencia entre ambos mapas es inmediata en la fila $p=1$
-(Tabla~\ref{tab:anexo-i-p1}). Con Accelerate los diez valores están entre
-2.52 y 2.53~s: el límite no llegó a la librería y el proceso principal usó
-siempre todos los núcleos. Con OpenBLAS la misma fila va de 11.47~s con $t=1$ a
-4.33~s con $t=10$, es decir, ahora sí se observa el efecto de los threads
-internos, y además se dispone por primera vez de una medición realmente
-secuencial: $(1,1)$ con 11.47~s.
-
-\begin{table}[H]
-    \centering
-    \small
-    \begin{tabular}{|c|c|r|r|r|}
-    \hline
-    \textbf{$(p,t)$} & $p\,t$ & \textbf{Mediana [s]} & \textbf{Mín [s]} & \textbf{Máx [s]} \\
-    \hline
-    $(9,1)$ & 9 & 2.644 & 2.624 & 2.716 \\
-    $(8,1)$ & 8 & 2.686 & 2.620 & 2.692 \\
-    $(10,1)$ & 10 & 2.844 & 2.482 & 2.866 \\
-    $(7,1)$ & 7 & 2.844 & 2.800 & 2.886 \\
-    $(5,2)$ & 10 & 2.955 & 2.892 & 3.122 \\
-    \hline
-    \end{tabular}
-    \caption{Anexo (i), computador 2 con OpenBLAS: cinco mejores combinaciones (5 repeticiones cada una).}
-    \label{tab:anexo-i-top}
-\end{table}
-
-La mejor combinación fue $(9,1)$ con 2.644~s, seguida muy de cerca por $(8,1)$
-con 2.686~s y por $(10,1)$ y $(7,1)$ con 2.844~s; las diferencias entre ellas
-están dentro de la dispersión de las repeticiones. El patrón general es claro:
-para un mismo presupuesto de núcleos, repartir el trabajo en procesos rinde más
-que repartirlo en threads BLAS. Con los mismos 10 núcleos, $(1,10)$ tardó
-4.33~s y $(10,1)$ 2.84~s; con 8 núcleos, $(1,8)$ tardó 4.66~s, $(2,4)$ 4.03~s,
-$(4,2)$ 3.16~s y $(8,1)$ 2.69~s. La razón es que el paralelismo entre procesos
-es de grano grueso y sin sincronización (cada remuestreo es independiente),
-mientras que los threads BLAS deben sincronizarse dentro de cada operación
-matricial y solo paralelizan la parte del cálculo que es álgebra lineal densa;
-el remuestreo, la indexación y la copia de $X^{(b)}$ quedan en un solo thread.
-
-Este anexo también obliga a releer el inciso (g). Los speedups medidos allí
-nunca superaron 2 en ninguno de los dos computadores. La explicación principal
-es que el $T(1)$ usado como referencia no era una ejecución secuencial: con
-$p=1$ el cálculo corre en el proceso principal y la librería BLAS usa todos los
-núcleos disponibles (10 threads en el computador 2, según la
-Tabla~\ref{tab:anexo-e-openblas}). Al aumentar $p$, joblib reduce los threads
-por worker a $\lfloor p_{\max}/p\rfloor$, de modo que el paralelismo total se
-mantiene cerca de $p_{\max}$ para todo $p$; lo único que cambia es cuánto de
-ese paralelismo va en procesos y cuánto en threads. Por eso las curvas $T(p)$
-son casi planas y $S(p)$ satura pronto. Medido contra la referencia realmente
-secuencial de este anexo, la mejor combinación alcanza un speedup de
-$11.47/2.64\approx4.3$ con 9 procesos, que es una imagen mucho más fiel de lo
-que el paralelismo aporta en este problema.
-
-Finalmente, los tiempos absolutos de los dos backends no son comparables entre
-sí: la mejor combinación con Accelerate (1.64~s) es más rápida que la mejor con
-OpenBLAS (2.64~s) porque Accelerate aprovecha las unidades de multiplicación
-matricial del chip Apple. Lo que este anexo aporta no es un tiempo menor, sino
-la posibilidad de observar y controlar $t$, que era lo que el enunciado pedía y
-el experimento original no podía entregar.
+    \includegraphics[width=0.85\textwidth]{../results/computer_2_openblas/oversubscription_openblas.png}
+    \caption{Oversubscription provocada en el computador 2 con combinaciones
+    $p\,t>10$. Eje vertical en escala logarítmica.}
+    \label{fig:anexo-oversub}
+\end{figure}
 
 \section*{(j) Comparación entre computadores}
 
